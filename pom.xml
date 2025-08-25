@@ -1,0 +1,55 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.xiaochenxt</groupId>
+        <artifactId>xc-spring-boot-starter-parent</artifactId>
+        <version>0.0.5</version>
+    </parent>
+
+    <artifactId>xc-spring-boot-native</artifactId>
+    <packaging>jar</packaging>
+    <version>0.0.3</version>
+
+    <name>${project.artifactId}</name>
+    <url>https://github.com/xiaochenxt/xc-spring-boot-native</url>
+    <description>能解决90%的springboot项目集成第三方常用组件的aot编译问题</description>
+
+    <developers>
+        <developer>
+            <id>dc2024</id>
+            <name>小郴</name>
+            <email>876975281@qq.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/xiaochenxt/xc-spring-boot-native</url>
+        <connection>https://github.com/xiaochenxt/xc-spring-boot-native.git</connection>
+        <developerConnection>https://github.com/xiaochenxt/xc-spring-boot-native.git</developerConnection>
+    </scm>
+
+    <properties>
+        <java.version>21</java.version>
+    </properties>
+
+  <dependencies>
+      <dependency>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-autoconfigure</artifactId>
+          <optional>true</optional>
+      </dependency>
+      <dependency>
+          <groupId>org.mybatis.spring.boot</groupId>
+          <artifactId>mybatis-spring-boot-starter</artifactId>
+          <optional>true</optional>
+      </dependency>
+      <dependency>
+          <groupId>org.graalvm.sdk</groupId>
+          <artifactId>nativeimage</artifactId>
+          <version>24.2.2</version>
+          <scope>provided</scope>
+      </dependency>
+  </dependencies>
+</project>
