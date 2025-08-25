@@ -173,6 +173,7 @@ public class AotUtils {
     public void registerJniIfPresent(MemberCategory[] memberCategory, String... classes) {
         for (String c : classes) {
             hints.jni().registerTypeIfPresent(classLoader, c, memberCategory);
+            System.out.println("registering jni " + c);
         }
     }
 
@@ -200,6 +201,7 @@ public class AotUtils {
                 Class<?> clazz = classLoader.loadClass(c);
                 if (!Serializable.class.isAssignableFrom(clazz)) continue;
                 hints.serialization().registerType((Class<? extends Serializable>) clazz);
+                System.out.println("registering serializable " + c);
             } catch (ClassNotFoundException ignored) {}
         }
     }

@@ -10,7 +10,7 @@
 
     <artifactId>xc-spring-boot-native</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
 
     <name>${project.artifactId}</name>
     <url>https://github.com/xiaochenxt/xc-spring-boot-native</url>
