@@ -369,7 +369,6 @@ public class AotUtils {
 
             if ("file".equals(protocol)) {
                 try {
-                    // 解码 URL 路径（避免空格、特殊字符导致的路径错误）
                     String decodedPath = URLDecoder.decode(root.getFile(), StandardCharsets.UTF_8);
                     File rootDir = new File(decodedPath);
 
@@ -380,14 +379,12 @@ public class AotUtils {
                     e.printStackTrace();
                 }
             } else if ("jar".equals(protocol)) {
-                // JAR 包逻辑无需修改（本身就会返回完整路径，如 mapper/IpMapper.xml）
                 String jarPath = root.getFile().substring(5, root.getFile().indexOf('!'));
                 try (JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8))) {
                     Enumeration<JarEntry> entries = jar.entries();
                     while (entries.hasMoreElements()) {
                         JarEntry entry = entries.nextElement();
                         String entryName = entry.getName();
-                        // 排除目录和 .class 文件，添加完整 JAR 内路径
                         if (!entryName.endsWith(".class") && !entry.isDirectory()) {
                             resources.add(entryName);
                         }
