@@ -170,8 +170,6 @@ class BasicFeature implements Feature {
         Class<?> phoneNumberUtil =  featureUtils.loadClass("com.google.i18n.phonenumbers.PhoneNumberUtil");
         if (phoneNumberUtil != null) {
             access.registerReachabilityHandler(duringAnalysisAccess -> {
-                // 这是添加全部
-                // featureUtils.registerResource(phoneNumberUtil, "com/google/i18n/phonenumbers/data/*");
                 // 这里仅添加中国大陆、中国台湾、中国香港、中国澳门、俄罗斯、美国、韩国的手机号元数据，需要其他的自行添加
                 featureUtils.registerResource(phoneNumberUtil,"com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_CN",
                         "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_TW",
