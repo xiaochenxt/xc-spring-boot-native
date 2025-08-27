@@ -1,0 +1,11 @@
+{
+  "groups": [],
+  "properties": [
+    {
+      "name": "xc.aot.mybatis.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用mybatis的aot处理.",
+      "defaultValue": true
+    }
+  ]
+}

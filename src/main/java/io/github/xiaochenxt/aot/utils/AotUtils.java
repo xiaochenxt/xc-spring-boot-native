@@ -12,11 +12,16 @@ import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.util.ClassUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 /**
  * 基于spring的aot处理操作简化工具
@@ -68,6 +73,7 @@ public class AotUtils {
     public void registerPattern(String... resources) {
         for (String resource : resources) {
             hints.resources().registerPattern(resource);
+            System.out.println("include resource " + resource);
         }
     }
 
@@ -86,6 +92,7 @@ public class AotUtils {
     public void excludePattern(String... resources) {
         for (String resource : resources) {
             hints.resources().registerPattern(builder -> builder.excludes(resource));
+            System.out.println("exclude resource " + resource);
         }
     }
 
@@ -224,12 +231,9 @@ public class AotUtils {
                     if (resource.isReadable()) {
                         MetadataReader metadataReader = metadataReaderFactory.getMetadataReader(resource);
                         String className = metadataReader.getClassMetadata().getClassName();
-                        if (className.endsWith("__BeanDefinitions")
-                                || className.endsWith("__ResourceAutowiring")
-                                || className.endsWith("__BeanFactoryRegistrations")
-                                || className.endsWith("__EnvironmentPostProcessor")
-                                || className.endsWith("__ApplicationContextInitializer")
-                                || className.endsWith("__Autowiring")) continue;
+                        // 过滤掉Spring相关的生成类
+                        // 详见：org.springframework.aot.generate.ClassNameGenerator
+                        if (className.contains("__")) continue;
                         try {
                             Class<?> clazz = ClassUtils.forName(className, classLoader);
                             if (predicate == null || predicate.test(clazz)) {
@@ -261,12 +265,9 @@ public class AotUtils {
                     if (resource.isReadable()) {
                         MetadataReader metadataReader = metadataReaderFactory.getMetadataReader(resource);
                         String className = metadataReader.getClassMetadata().getClassName();
-                        if (className.endsWith("__BeanDefinitions")
-                                || className.endsWith("__ResourceAutowiring")
-                                || className.endsWith("__BeanFactoryRegistrations")
-                                || className.endsWith("__EnvironmentPostProcessor")
-                                || className.endsWith("__ApplicationContextInitializer")
-                                || className.endsWith("__Autowiring")) continue;
+                        // 过滤掉Spring相关的生成类
+                        // 详见：org.springframework.aot.generate.ClassNameGenerator
+                        if (className.contains("__")) continue;
                         classes.add(className);
                     }
                 }
@@ -303,6 +304,110 @@ public class AotUtils {
             }
         }
         return result;
+    }
+
+    public List<Class<?>> findClasses(Predicate<Class<?>> predicate) throws IOException {
+        List<Class<?>> result = new ArrayList<>();
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(classLoader);
+        CachingMetadataReaderFactory readerFactory = new CachingMetadataReaderFactory(resolver);
+        // 扫描所有类文件
+        Resource[] resources = resolver.getResources("classpath*:/**/*.class");
+        for (Resource resource : resources) {
+            if (resource.isReadable()) {
+                MetadataReader reader = readerFactory.getMetadataReader(resource);
+                String className = reader.getClassMetadata().getClassName();
+                // 跳过 JDK 类（判断是否以 java. 或 javax. 开头）
+//                if (className.startsWith("java.") || className.startsWith("javax.") || className.startsWith("jdk.") || className.startsWith("com.sun.") || className.startsWith("sun.")) {
+//                    continue;
+//                }
+                try {
+                    Class<?> clazz = Class.forName(className, false, classLoader);
+                    if (predicate.test(clazz)) {
+                        result.add(clazz);
+                    }
+                } catch (ClassNotFoundException ignored) {
+
+                }
+            }
+        }
+        return result;
+    }
+
+    public void findResourcesInDirectory(File directory, String parentPath, Set<String> resources) {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return;
+        }
+
+        for (File file : files) {
+            String fileName = file.getName();
+            String currentPath = parentPath.isEmpty() ? fileName : parentPath + "/" + fileName;
+
+            if (file.isDirectory()) {
+                findResourcesInDirectory(file, currentPath, resources);
+            } else {
+                if (!fileName.endsWith(".class")) {
+                    resources.add(currentPath);
+                }
+            }
+        }
+    }
+
+    /**
+     * 查找指定包下的资源
+     * @param packageName
+     * @return
+     * @throws IOException
+     */
+    public Set<String> findResources(String packageName) throws IOException {
+        Set<String> resources = new HashSet<>();
+        String path = packageName.replace('.', '/');
+        Enumeration<URL> roots = classLoader.getResources(path);
+        while (roots.hasMoreElements()) {
+            URL root = roots.nextElement();
+            String protocol = root.getProtocol();
+
+            if ("file".equals(protocol)) {
+                try {
+                    // 解码 URL 路径（避免空格、特殊字符导致的路径错误）
+                    String decodedPath = URLDecoder.decode(root.getFile(), StandardCharsets.UTF_8);
+                    File rootDir = new File(decodedPath);
+
+                    if (rootDir.exists() && rootDir.isDirectory()) {
+                        findResourcesInDirectory(rootDir, "", resources);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else if ("jar".equals(protocol)) {
+                // JAR 包逻辑无需修改（本身就会返回完整路径，如 mapper/IpMapper.xml）
+                String jarPath = root.getFile().substring(5, root.getFile().indexOf('!'));
+                try (JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8))) {
+                    Enumeration<JarEntry> entries = jar.entries();
+                    while (entries.hasMoreElements()) {
+                        JarEntry entry = entries.nextElement();
+                        String entryName = entry.getName();
+                        // 排除目录和 .class 文件，添加完整 JAR 内路径
+                        if (!entryName.endsWith(".class") && !entry.isDirectory()) {
+                            resources.add(entryName);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return resources;
+    }
+
+    /**
+     * 查找根目录的资源
+     * @return
+     * @throws IOException
+     */
+    public Set<String> findResources() throws IOException {
+        return findResources("");
     }
 
 }

@@ -1,19 +1,26 @@
 package io.github.xiaochenxt.aot;
 
 import io.github.xiaochenxt.aot.utils.FeatureUtils;
-import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.hosted.*;
 
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.lang.invoke.SerializedLambda;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
 /**
- * 基本注册
+ * 基本注册，解决了一些代理检测无法自动配置的场景
+ * <p>
+ * 可搭配代理检测自动收集配置，但需注意，尽量不要在idea中启动，如果在idea等开发工具中启动，会收集idea的agent，
+ * 会多出sun.instrument.InstrumentationImpl和com.intellij.rt.execution.application.AppMainV2$Agent等
+ * ，最好移除掉（搜索agent、intellij等）</p>
+ * <p>虚拟机选项：-agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image</p>
+ * <p>代理使用方式：java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image -jar app.jar</p>
+ *
  * @author xiaochen
  * @since 2025/8/20
  */
@@ -21,16 +28,13 @@ class BasicFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeOptions.listDescriptors().forEach(desc -> {
-           System.out.println(desc);
-        });
         FeatureUtils featureUtils = new FeatureUtils(access.getApplicationClassLoader());
-        caffeine(featureUtils);
+        caffeine(featureUtils, access);
         lettuce(featureUtils);
         font(featureUtils, access);
-        aliyuncs(featureUtils);
-        captcha(featureUtils);
-        phonenumbers(featureUtils);
+        aliyuncs(featureUtils, access);
+        captcha(featureUtils, access);
+        phonenumbers(featureUtils, access);
         serializedLambda(featureUtils, access);
     }
 
@@ -107,73 +111,87 @@ class BasicFeature implements Feature {
      * caffine的基本反射注册，正常情况下足够了
      * @param featureUtils
      */
-    private void caffeine(FeatureUtils featureUtils) {
-        featureUtils.registerReflectionDeclaredConstructorsIfPresent(
-                "com.github.benmanes.caffeine.cache.PD","com.github.benmanes.caffeine.cache.PDA","com.github.benmanes.caffeine.cache.PDAMS",
-                "com.github.benmanes.caffeine.cache.PDW", "com.github.benmanes.caffeine.cache.PDWMS","com.github.benmanes.caffeine.cache.PS",
-                "com.github.benmanes.caffeine.cache.PSA","com.github.benmanes.caffeine.cache.PSAMS","com.github.benmanes.caffeine.cache.PSW",
-                "com.github.benmanes.caffeine.cache.PSWMS","com.github.benmanes.caffeine.cache.SIMSA","com.github.benmanes.caffeine.cache.SIMSW",
-                "com.github.benmanes.caffeine.cache.SSMSA","com.github.benmanes.caffeine.cache.SSMSW");
+    private void caffeine(FeatureUtils featureUtils, BeforeAnalysisAccess access) {
+        Class<?> nodeFactory = featureUtils.loadClass("com.github.benmanes.caffeine.cache.NodeFactory");
+        if (nodeFactory != null) {
+            access.registerReachabilityHandler(duringAnalysisAccess -> {
+                featureUtils.registerReflectionDeclaredConstructorsIfPresent(
+                        "com.github.benmanes.caffeine.cache.PD","com.github.benmanes.caffeine.cache.PDA","com.github.benmanes.caffeine.cache.PDAMS",
+                        "com.github.benmanes.caffeine.cache.PDW", "com.github.benmanes.caffeine.cache.PDWMS","com.github.benmanes.caffeine.cache.PS",
+                        "com.github.benmanes.caffeine.cache.PSA","com.github.benmanes.caffeine.cache.PSAMS","com.github.benmanes.caffeine.cache.PSW",
+                        "com.github.benmanes.caffeine.cache.PSWMS");
+            }, nodeFactory);
+        }
+        Class<?> localCacheFactory = featureUtils.loadClass("com.github.benmanes.caffeine.cache.LocalCacheFactory");
+        if (localCacheFactory != null) {
+            access.registerReachabilityHandler(duringAnalysisAccess -> {
+                featureUtils.registerReflectionDeclaredConstructorsIfPresent(
+                        "com.github.benmanes.caffeine.cache.SIMSA","com.github.benmanes.caffeine.cache.SIMSW",
+                        "com.github.benmanes.caffeine.cache.SSMSA","com.github.benmanes.caffeine.cache.SSMSW");
+            }, localCacheFactory);
+        }
     }
 
     private void lettuce(FeatureUtils featureUtils) {
         if (featureUtils.isPresent("io.lettuce.core.RedisClient")) RuntimeSystemProperties.register("io.lettuce.core.jfr", "false");
     }
 
-    private void aliyuncs(FeatureUtils featureUtils) {
+    private void aliyuncs(FeatureUtils featureUtils, BeforeAnalysisAccess access) {
         if (featureUtils.isPresent("com.aliyuncs.http.HttpClientFactory")) {
-            try {
-                Class<?> apacheHttpClient = featureUtils.classLoader().loadClass("com.aliyuncs.http.clients.ApacheHttpClient");
-                RuntimeReflection.register(apacheHttpClient);
-                featureUtils.registerResource(apacheHttpClient,"endpoints.json");
-                Class<?> assumeRoleResponse = featureUtils.loadClass("com.aliyuncs.auth.sts.AssumeRoleResponse");
-                if (assumeRoleResponse != null) {
-                    featureUtils.registerReflectionBasic(assumeRoleResponse);
-                    RuntimeReflection.registerForReflectiveInstantiation(featureUtils.classLoader().loadClass("com.aliyuncs.auth.sts.AssumeRoleResponse"));
-                    featureUtils.registerReflectionBasic(assumeRoleResponse.getClasses());
-                }
-            } catch (ClassNotFoundException ignored) {}
+            Class<?> apacheHttpClient = featureUtils.loadClass("com.aliyuncs.http.clients.ApacheHttpClient");
+            if (apacheHttpClient != null) {
+                access.registerReachabilityHandler(duringAnalysisAccess -> {
+                    try {
+                        RuntimeReflection.register(apacheHttpClient);
+                        featureUtils.registerResource(apacheHttpClient,"endpoints.json");
+                        Class<?> assumeRoleResponse = featureUtils.loadClass("com.aliyuncs.auth.sts.AssumeRoleResponse");
+                        if (assumeRoleResponse != null) {
+                            featureUtils.registerReflectionBasic(assumeRoleResponse);
+                            RuntimeReflection.registerForReflectiveInstantiation(featureUtils.classLoader().loadClass("com.aliyuncs.auth.sts.AssumeRoleResponse"));
+                            featureUtils.registerReflectionBasic(assumeRoleResponse.getClasses());
+                        }
+                    } catch (ClassNotFoundException ignored) {}
+                }, apacheHttpClient);
+            }
         }
     }
 
-    private void captcha(FeatureUtils featureUtils) {
+    private void captcha(FeatureUtils featureUtils, BeforeAnalysisAccess access) {
         Class<?> captcha = featureUtils.loadClass("com.wf.captcha.base.Captcha");
         if (captcha != null) {
-            // 仅添加第一个字体，需要其他的自行添加
-            featureUtils.registerResource(captcha,"epilog.ttf");
+            access.registerReachabilityHandler(duringAnalysisAccess -> {
+                // 仅添加第一个字体，需要其他的自行添加
+                featureUtils.registerResource(captcha,"epilog.ttf");
+            }, captcha);
         }
     }
 
-    private void phonenumbers(FeatureUtils featureUtils) {
+    private void phonenumbers(FeatureUtils featureUtils, BeforeAnalysisAccess access) {
         Class<?> phoneNumberUtil =  featureUtils.loadClass("com.google.i18n.phonenumbers.PhoneNumberUtil");
         if (phoneNumberUtil != null) {
-            // 这是添加全部
-            // featureUtils.registerResource(phoneNumberUtil, "com/google/i18n/phonenumbers/data/*");
-            // 这里仅添加中国大陆、中国台湾、中国香港、中国澳门、俄罗斯、美国、韩国的手机号元数据，需要其他的自行添加
-            featureUtils.registerResource(phoneNumberUtil,"com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_CN",
-                    "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_TW",
-                    "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_HK",
-                    "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_MO",
-                    "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_RU",
-                    "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_US",
-                    "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_KR");
+            access.registerReachabilityHandler(duringAnalysisAccess -> {
+                // 这是添加全部
+                // featureUtils.registerResource(phoneNumberUtil, "com/google/i18n/phonenumbers/data/*");
+                // 这里仅添加中国大陆、中国台湾、中国香港、中国澳门、俄罗斯、美国、韩国的手机号元数据，需要其他的自行添加
+                featureUtils.registerResource(phoneNumberUtil,"com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_CN",
+                        "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_TW",
+                        "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_HK",
+                        "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_MO",
+                        "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_RU",
+                        "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_US",
+                        "com/google/i18n/phonenumbers/data/PhoneNumberMetadataProto_KR");
+            },  phoneNumberUtil);
         }
     }
 
     private void serializedLambda(FeatureUtils featureUtils, BeforeAnalysisAccess access) {
-        if (featureUtils.isPresent("com.baomidou.mybatisplus.core.toolkit.support.SFunction")) {
+        access.registerReachabilityHandler(duringAnalysisAccess -> {
+            RuntimeSerialization.register(SerializedLambda.class);
             try {
-                Class<?> c = featureUtils.classLoader().loadClass("com.baomidou.mybatisplus.core.toolkit.support.SFunction");
-                access.registerReachabilityHandler(duringAnalysisAccess -> {
-                    RuntimeSerialization.register(java.lang.invoke.SerializedLambda.class);
-                    try {
-                        List<Class<?>> classes = featureUtils.collectClass(featureUtils.findSpringBootApplicationClasses().getFirst().getPackageName());
-                        // 可能存在警告，直接忽略，例如：Warning: Could not register class xxx for lambda serialization as it does not capture any serializable lambda.
-                        classes.forEach(RuntimeSerialization::registerLambdaCapturingClass);
-                    } catch (IOException ignored) {}
-                }, c);
-            } catch (ClassNotFoundException ignored) {}
-        }
+                List<Class<?>> classes = featureUtils.collectClass(featureUtils.findSpringBootApplicationClasses().getFirst().getPackageName());
+                classes.forEach(featureUtils::registerSerializationLambdaCapturingClass);
+            } catch (IOException ignored) {}
+        }, SerializedLambda.class);
     }
 
 }

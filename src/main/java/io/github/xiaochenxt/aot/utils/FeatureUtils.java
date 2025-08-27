@@ -7,6 +7,7 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -64,6 +65,7 @@ public class FeatureUtils {
             RuntimeReflection.register(c.getDeclaredConstructors());
             RuntimeReflection.register(c.getDeclaredMethods());
             RuntimeReflection.register(c.getDeclaredFields());
+            System.out.println("registering reflect " + c.getName());
         }
     }
 
@@ -73,6 +75,7 @@ public class FeatureUtils {
             RuntimeReflection.register(c.getConstructors());
             RuntimeReflection.register(c.getMethods());
             RuntimeReflection.register(c.getDeclaredFields());
+            System.out.println("registering reflect " + c.getName());
         }
     }
 
@@ -89,6 +92,7 @@ public class FeatureUtils {
             RuntimeReflection.register(c.getDeclaredConstructors());
             RuntimeReflection.register(c.getDeclaredMethods());
             RuntimeReflection.register(c.getDeclaredFields());
+            System.out.println("registering reflect " + c.getName());
         }
     }
 
@@ -100,6 +104,7 @@ public class FeatureUtils {
             RuntimeReflection.register(c.getConstructors());
             RuntimeReflection.register(c.getMethods());
             RuntimeReflection.register(c.getDeclaredFields());
+            System.out.println("registering reflect " + c.getName());
         }
     }
 
@@ -109,6 +114,7 @@ public class FeatureUtils {
             if (c == null) continue;
             RuntimeReflection.register(c);
             RuntimeReflection.register(c.getDeclaredConstructors());
+            System.out.println("registering reflect " + c.getName());
         }
     }
 
@@ -121,6 +127,7 @@ public class FeatureUtils {
             RuntimeJNIAccess.register(c.getMethods());
             RuntimeJNIAccess.register(c.getFields());
             RuntimeJNIAccess.register(c.getDeclaredFields());
+            System.out.println("registering jni " + c.getName());
         }
     }
 
@@ -135,17 +142,22 @@ public class FeatureUtils {
             RuntimeJNIAccess.register(c.getMethods());
             RuntimeJNIAccess.register(c.getFields());
             RuntimeJNIAccess.register(c.getDeclaredFields());
+            System.out.println("registering jni " + c.getName());
         }
     }
 
     public void registerResource(Class<?> c, String... resources) {
         for (String resource : resources) {
-            RuntimeResourceAccess.addResource(c.getModule(), resource);
+            Module module = c.getModule();
+            RuntimeResourceAccess.addResource(module, resource);
+            System.out.println("registering module " + module.getName()+" resource "+resource);
         }
     }
 
     public void registerResourceBundle(Class<?> c, String beanName, Locale... locales) {
-        RuntimeResourceAccess.addResourceBundle(c.getModule(), beanName, locales);
+        Module module = c.getModule();
+        RuntimeResourceAccess.addResourceBundle(module, beanName, locales);
+        System.out.println("registering resourceBundle module " + module.getName() + " beanName " + beanName + " locales " + Arrays.toString(locales));
     }
 
     /**
@@ -156,6 +168,7 @@ public class FeatureUtils {
     public void ignoreResources(String... resources) {
         for (String resource : resources) {
             RuntimeResourceSupport.singleton().ignoreResources(ConfigurationCondition.alwaysTrue(), resource);
+            System.out.println("ignore resource " + resource);
         }
     }
 
@@ -174,6 +187,7 @@ public class FeatureUtils {
         for (Class<?> c : classes) {
             if (!Serializable.class.isAssignableFrom(c)) continue;
             RuntimeSerialization.register(c);
+            System.out.println("registering serializable " + c.getName());
         }
     }
 
@@ -183,24 +197,33 @@ public class FeatureUtils {
             if (c == null) continue;
             if (!Serializable.class.isAssignableFrom(c)) continue;
             RuntimeSerialization.register(c);
+            System.out.println("registering serializable " + c.getName());
         }
     }
 
     public void registerSerializationLambdaCapturingClass(Class<?>... classes) {
         for (Class<?> c : classes) {
-            RuntimeSerialization.registerLambdaCapturingClass(c);
+            for (Method declaredMethod : c.getDeclaredMethods()) {
+                if (declaredMethod.getName().contains("$deserializeLambda$")) {
+                    RuntimeSerialization.registerLambdaCapturingClass(c);
+                    System.out.println("registering serializationLambdaCapturing " + c.getName());
+                    break;
+                }
+            }
         }
     }
 
     public void registerSerializationIncludingAssociatedClasses(Class<?>... classes) {
         for (Class<?> c : classes) {
             RuntimeSerialization.registerIncludingAssociatedClasses(c);
+            System.out.println("registering serializationIncludingAssociated " + c.getName());
         }
     }
 
     public void registerSerializationProxyClass(Class<?>... classes) {
         for (Class<?> c : classes) {
             RuntimeSerialization.registerProxyClass(c);
+            System.out.println("registering serializationProxy " + c.getName());
         }
     }
 
@@ -210,6 +233,7 @@ public class FeatureUtils {
             if (c == null) continue;
             if (!Serializable.class.isAssignableFrom(c)) continue;
             RuntimeProxyCreation.register(c);
+            System.out.println("registering proxy " + c.getName());
         }
     }
 
@@ -226,14 +250,8 @@ public class FeatureUtils {
                 List<String> classNames = findClassNamesInPackage(basePackage);
                 for (String className : classNames) {
                     // 过滤掉Spring相关的生成类
-                    if (className.endsWith("__BeanDefinitions")
-                            || className.endsWith("__ResourceAutowiring")
-                            || className.endsWith("__BeanFactoryRegistrations")
-                            || className.endsWith("__EnvironmentPostProcessor")
-                            || className.endsWith("__ApplicationContextInitializer")
-                            || className.endsWith("__Autowiring")) {
-                        continue;
-                    }
+                    // 详见：org.springframework.aot.generate.ClassNameGenerator
+                    if (className.contains("__")) continue;
 
                     try {
                         Class<?> clazz = Class.forName(className, false, classLoader);
@@ -245,7 +263,7 @@ public class FeatureUtils {
                     }
                 }
             } catch (IOException e) {
-                throw new RuntimeException("Error scanning classes", e);
+                e.printStackTrace();
             }
         }
         return classes;
@@ -258,26 +276,24 @@ public class FeatureUtils {
                 List<String> names = findClassNamesInPackage(basePackage);
                 for (String className : names) {
                     // 过滤掉Spring相关的生成类
-                    if (className.endsWith("__BeanDefinitions")
-                            || className.endsWith("__ResourceAutowiring")
-                            || className.endsWith("__BeanFactoryRegistrations")
-                            || className.endsWith("__EnvironmentPostProcessor")
-                            || className.endsWith("__ApplicationContextInitializer")
-                            || className.endsWith("__Autowiring")) {
-                        continue;
-                    }
+                    // 详见：org.springframework.aot.generate.ClassNameGenerator
+                    if (className.contains("__")) continue;
                     classNames.add(className);
                 }
             } catch (IOException e) {
-                throw new RuntimeException("Error scanning classes", e);
+                e.printStackTrace();
             }
         }
         return classNames;
     }
 
     public List<Class<?>> findSpringBootApplicationClasses() throws IOException {
+        return findClasses(c -> Arrays.stream(c.getAnnotations()).anyMatch(annotation -> annotation.annotationType().getName().equals("org.springframework.boot.autoconfigure.SpringBootApplication")));
+    }
+
+    public List<Class<?>> findClasses(Predicate<Class<?>> predicate) throws IOException {
         List<Class<?>> result = new ArrayList<>();
-        List<String> allClassNames = findAllClassNames();
+        List<String> allClassNames = findClassNames();
 
         for (String className : allClassNames) {
             // 跳过JDK类
@@ -289,8 +305,7 @@ public class FeatureUtils {
 
             try {
                 Class<?> clazz = Class.forName(className, false, classLoader);
-                // 检查是否有@SpringBootApplication注解
-                if (Arrays.stream(clazz.getAnnotations()).anyMatch(annotation -> annotation.annotationType().getName().equals("org.springframework.boot.autoconfigure.SpringBootApplication"))) {
+                if (predicate.test(clazz)) {
                     result.add(clazz);
                 }
             } catch (ClassNotFoundException | LinkageError e) {
@@ -300,7 +315,7 @@ public class FeatureUtils {
         return result;
     }
 
-    private List<String> findClassNamesInPackage(String packageName) throws IOException {
+    public List<String> findClassNamesInPackage(String packageName) throws IOException {
         List<String> classNames = new ArrayList<>();
         String path = packageName.replace('.', '/');
         Enumeration<URL> resources = classLoader.getResources(path);
@@ -316,7 +331,7 @@ public class FeatureUtils {
                         findClassesInDirectory(directory, packageName, classNames);
                     }
                 } catch (Exception e) {
-                    // 处理文件系统访问异常
+                    e.printStackTrace();
                 }
             } else if ("jar".equals(protocol)) {
                 String jarPath = resource.getFile().substring(5, resource.getFile().indexOf('!'));
@@ -331,7 +346,7 @@ public class FeatureUtils {
                         }
                     }
                 } catch (Exception e) {
-                    // 处理JAR文件访问异常
+                    e.printStackTrace();
                 }
             }
         }
@@ -339,25 +354,26 @@ public class FeatureUtils {
         return classNames;
     }
 
-    private void findClassesInDirectory(File directory, String packageName, List<String> classNames) {
+    public void findClassesInDirectory(File directory, String packageName, List<String> classNames) {
         File[] files = directory.listFiles();
         if (files == null) {
             return;
         }
 
         for (File file : files) {
+            String filename = file.getName();
             if (file.isDirectory()) {
-                // 递归处理子目录
-                findClassesInDirectory(file, packageName + "." + file.getName(), classNames);
-            } else if (file.getName().endsWith(".class")) {
-                // 处理类文件
-                String className = packageName + '.' + file.getName().substring(0, file.getName().length() - 6);
+                String newPackage = packageName.isEmpty() ? filename : (packageName + "." + filename);
+                findClassesInDirectory(file, newPackage, classNames);
+            } else if (filename.endsWith(".class")) {
+                String fullClassName = filename.substring(0, filename.length() - 6);
+                String className = packageName.isEmpty() ? fullClassName : packageName + '.' + fullClassName;
                 classNames.add(className);
             }
         }
     }
 
-    private List<String> findAllClassNames() throws IOException {
+    public List<String> findClassNames() throws IOException {
         List<String> classNames = new ArrayList<>();
 
         // 获取所有类路径根
@@ -370,10 +386,10 @@ public class FeatureUtils {
                 try {
                     File rootDir = new File(URLDecoder.decode(root.getFile(), StandardCharsets.UTF_8));
                     if (rootDir.exists() && rootDir.isDirectory()) {
-                        findAllClassesInDirectory(rootDir, "", classNames);
+                        findClassesInDirectory(rootDir, "", classNames);
                     }
                 } catch (Exception e) {
-                    // 处理文件系统访问异常
+                    e.printStackTrace();
                 }
             } else if ("jar".equals(protocol)) {
                 String jarPath = root.getFile().substring(5, root.getFile().indexOf('!'));
@@ -388,7 +404,7 @@ public class FeatureUtils {
                         }
                     }
                 } catch (Exception e) {
-                    // 处理JAR文件访问异常
+                    e.printStackTrace();
                 }
             }
         }
@@ -396,23 +412,81 @@ public class FeatureUtils {
         return classNames;
     }
 
-    private void findAllClassesInDirectory(File directory, String packageName, List<String> classNames) {
+    public void findResourcesInDirectory(File directory, String parentPath, Set<String> resources) {
         File[] files = directory.listFiles();
         if (files == null) {
             return;
         }
 
         for (File file : files) {
+            String fileName = file.getName();
+            String currentPath = parentPath.isEmpty() ? fileName : parentPath + "/" + fileName;
+
             if (file.isDirectory()) {
-                String newPackage = packageName.isEmpty() ? file.getName() : packageName + "." + file.getName();
-                findAllClassesInDirectory(file, newPackage, classNames);
-            } else if (file.getName().endsWith(".class")) {
-                String className = packageName.isEmpty()
-                        ? file.getName().substring(0, file.getName().length() - 6)
-                        : packageName + '.' + file.getName().substring(0, file.getName().length() - 6);
-                classNames.add(className);
+                findResourcesInDirectory(file, currentPath, resources);
+            } else {
+                if (!fileName.endsWith(".class")) {
+                    resources.add(currentPath);
+                }
             }
         }
+    }
+
+    /**
+     * 查找指定包下的资源
+     * @param packageName
+     * @return
+     * @throws IOException
+     */
+    public Set<String> findResources(String packageName) throws IOException {
+        Set<String> resources = new HashSet<>();
+        String path = packageName.replace('.', '/');
+        Enumeration<URL> roots = classLoader.getResources(path);
+        while (roots.hasMoreElements()) {
+            URL root = roots.nextElement();
+            String protocol = root.getProtocol();
+
+            if ("file".equals(protocol)) {
+                try {
+                    // 解码 URL 路径（避免空格、特殊字符导致的路径错误）
+                    String decodedPath = URLDecoder.decode(root.getFile(), StandardCharsets.UTF_8);
+                    File rootDir = new File(decodedPath);
+
+                    if (rootDir.exists() && rootDir.isDirectory()) {
+                        findResourcesInDirectory(rootDir, "", resources);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else if ("jar".equals(protocol)) {
+                // JAR 包逻辑无需修改（本身就会返回完整路径，如 mapper/IpMapper.xml）
+                String jarPath = root.getFile().substring(5, root.getFile().indexOf('!'));
+                try (JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8))) {
+                    Enumeration<JarEntry> entries = jar.entries();
+                    while (entries.hasMoreElements()) {
+                        JarEntry entry = entries.nextElement();
+                        String entryName = entry.getName();
+                        // 排除目录和 .class 文件，添加完整 JAR 内路径
+                        if (!entryName.endsWith(".class") && !entry.isDirectory()) {
+                            resources.add(entryName);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return resources;
+    }
+
+    /**
+     * 查找根目录的资源
+     * @return
+     * @throws IOException
+     */
+    public Set<String> findResources() throws IOException {
+        return findResources("");
     }
 
 }

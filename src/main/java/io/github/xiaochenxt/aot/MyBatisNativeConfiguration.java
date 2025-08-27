@@ -27,6 +27,8 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
+import org.springframework.aop.framework.AopProxyUtils;
+import org.springframework.aot.hint.ExecutableMode;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -44,6 +46,7 @@ import org.springframework.beans.factory.support.MergedBeanDefinitionPostProcess
 import org.springframework.beans.factory.support.RegisteredBean;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportRuntimeHints;
@@ -51,6 +54,7 @@ import org.springframework.core.ResolvableType;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
 
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -63,6 +67,7 @@ import java.util.stream.Stream;
 /**
  * 解决mybatis-spring-boot-starter的aot编译运行问题（同时支持mybatis-plus）
  */
+@ConditionalOnProperty(value = "xc.aot.mybatis.enabled", havingValue = "true", matchIfMissing = true)
 @ConditionalOnClass(org.mybatis.spring.mapper.MapperFactoryBean.class)
 @ImportRuntimeHints(MyBatisNativeConfiguration.MyBaitsRuntimeHintsRegistrar.class)
 @Configuration(proxyBeanMethods = false)
@@ -108,6 +113,17 @@ public class MyBatisNativeConfiguration {
             Stream.of("org/apache/ibatis/builder/xml/*.dtd", "org/apache/ibatis/builder/xml/*.xsd")
                     .forEach(hints.resources()::registerPattern);
             AotUtils aotUtils = new AotUtils(hints, classLoader);
+            Class<?> executor = aotUtils.loadClass("org.apache.ibatis.executor.Executor");
+            MemberCategory[] memberCategories = new MemberCategory[]{MemberCategory.INVOKE_PUBLIC_METHODS};
+            if (executor != null) {
+                hints.reflection().registerType(executor, memberCategories);
+                hints.proxies().registerJdkProxy(executor);
+            }
+            Class<?> statementHandler = aotUtils.loadClass("org.apache.ibatis.executor.statement.StatementHandler");
+            if (statementHandler != null) {
+                hints.reflection().registerType(statementHandler, memberCategories);
+                hints.proxies().registerJdkProxy(statementHandler);
+            }
             supportMybatisPlus(aotUtils);
         }
 
@@ -116,18 +132,22 @@ public class MyBatisNativeConfiguration {
          * @param aotUtils
          */
         private void supportMybatisPlus(AotUtils aotUtils) {
-            if (aotUtils.isPresent("com.baomidou.mybatisplus.core.conditions.query.QueryWrapper")) {
+            Class<?> wrapper = aotUtils.loadClass("com.baomidou.mybatisplus.core.conditions.Wrapper");
+            if (wrapper != null) {
                 aotUtils.registerSerializableIfPresent("com.baomidou.mybatisplus.core.toolkit.support.SFunction");
                 aotUtils.registerReflectionIfPresent("com.baomidou.mybatisplus.core.MybatisXMLLanguageDriver",
-                        "com.baomidou.mybatisplus.extension.conditions.AbstractChainWrapper",
-                        "com.baomidou.mybatisplus.extension.conditions.query.QueryChainWrapper",
-                        "com.baomidou.mybatisplus.core.conditions.ISqlSegment",
-                        "com.baomidou.mybatisplus.core.conditions.Wrapper",
-                        "com.baomidou.mybatisplus.core.conditions.AbstractWrapper",
-                        "com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper",
-                        "com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper",
-                        "com.baomidou.mybatisplus.core.conditions.query.QueryWrapper",
-                        "com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper");
+                        "com.baomidou.mybatisplus.core.conditions.ISqlSegment");
+                for (Class<?> c : aotUtils.collectClass(wrapper::isAssignableFrom, "com.baomidou.mybatisplus")) {
+                    aotUtils.registerReflection(c);
+                }
+                Class<?> mybatisMapperProxy = aotUtils.loadClass("com.baomidou.mybatisplus.core.override.MybatisMapperProxy");
+                if (mybatisMapperProxy != null) {
+                    aotUtils.registerReflection(new MemberCategory[]{MemberCategory.DECLARED_FIELDS}, mybatisMapperProxy);
+                    try {
+                        aotUtils.hints().reflection().registerMethod(mybatisMapperProxy.getMethod("getMapperInterface"), ExecutableMode.INVOKE);
+                        aotUtils.hints().reflection().registerMethod(mybatisMapperProxy.getMethod("getSqlSession"), ExecutableMode.INVOKE);
+                    } catch (NoSuchMethodException ignored) {}
+                }
             }
         }
 
@@ -160,12 +180,20 @@ public class MyBatisNativeConfiguration {
                         if (mapperInterfaceType != null) {
                             registerReflectionTypeIfNecessary(mapperInterfaceType, hints);
                             hints.proxies().registerJdkProxy(mapperInterfaceType);
-                            String simpleName = mapperInterfaceType.getSimpleName();
-                            String resourceName = "mapper/"+simpleName.concat(".xml");
-                            hints.resources().registerPattern(resourceName);
-                            // 一般不会直接放在resources根目录，可移除
-                            hints.resources().registerPattern(simpleName+".xml");
+                            hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(mapperInterfaceType));
                             registerMapperRelationships(mapperInterfaceType, hints);
+                            String simpleName = mapperInterfaceType.getSimpleName();
+                            String resourceName = simpleName.concat(".xml");
+                            AotUtils aotUtils = new AotUtils(hints, ClassUtils.getDefaultClassLoader());
+                            try {
+                                Set<String> resources = aotUtils.findResources();
+                                for (String resource : resources) {
+                                    if (resource.endsWith(resourceName)) {
+                                        hints.resources().registerPattern(resource);
+                                        break;
+                                    }
+                                }
+                            } catch (IOException ignored) {}
                         }
                     }
                 }
