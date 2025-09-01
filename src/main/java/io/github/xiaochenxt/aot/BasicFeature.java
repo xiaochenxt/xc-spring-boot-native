@@ -46,7 +46,7 @@ class BasicFeature implements Feature {
         access.registerReachabilityHandler(duringAnalysisAccess -> {
             try {
                 FontRequiredRegister.INSTANCE.register(new FeatureUtils(duringAnalysisAccess.getApplicationClassLoader()));
-            } catch (NoSuchMethodException | NoSuchFieldException | ClassNotFoundException e) {
+            } catch (Exception e) {
                 System.out.println("字体注册异常，可能导致字体相关功能无法使用");
                 e.printStackTrace();
             }
@@ -150,7 +150,7 @@ class BasicFeature implements Feature {
                             RuntimeReflection.registerForReflectiveInstantiation(featureUtils.classLoader().loadClass("com.aliyuncs.auth.sts.AssumeRoleResponse"));
                             featureUtils.registerReflectionBasic(assumeRoleResponse.getClasses());
                         }
-                    } catch (ClassNotFoundException ignored) {}
+                    } catch (Exception ignored) {}
                 }, apacheHttpClient);
             }
         }
@@ -186,9 +186,9 @@ class BasicFeature implements Feature {
         access.registerReachabilityHandler(duringAnalysisAccess -> {
             RuntimeSerialization.register(SerializedLambda.class);
             try {
-                List<Class<?>> classes = featureUtils.collectClass(featureUtils.findSpringBootApplicationClasses().getFirst().getPackageName());
+                List<Class<?>> classes = featureUtils.collectClass(featureUtils.findMainPackages());
                 classes.forEach(featureUtils::registerSerializationLambdaCapturingClass);
-            } catch (IOException ignored) {}
+            } catch (Exception ignored) {}
         }, SerializedLambda.class);
     }
 

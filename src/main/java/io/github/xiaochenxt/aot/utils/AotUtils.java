@@ -251,8 +251,8 @@ public class AotUtils {
         return classes;
     }
 
-    public List<String> collectClassNames(String... packages) {
-        List<String> classes = new ArrayList<>();
+    public Set<String> collectClassNames(String... packages) {
+        Set<String> classes = new HashSet<>();
         for (String basePackage : packages) {
             try {
                 // 扫描该包及其子包下的所有类
@@ -288,10 +288,6 @@ public class AotUtils {
             if (resource.isReadable()) {
                 MetadataReader reader = readerFactory.getMetadataReader(resource);
                 String className = reader.getClassMetadata().getClassName();
-                // 跳过 JDK 类（判断是否以 java. 或 javax. 开头）
-//                if (className.startsWith("java.") || className.startsWith("javax.") || className.startsWith("jdk.") || className.startsWith("com.sun.") || className.startsWith("sun.")) {
-//                    continue;
-//                }
                 // 检查是否有 @SpringBootApplication 注解
                 if (reader.getAnnotationMetadata().hasAnnotation(SpringBootApplication.class.getName())) {
                     try {
@@ -316,10 +312,6 @@ public class AotUtils {
             if (resource.isReadable()) {
                 MetadataReader reader = readerFactory.getMetadataReader(resource);
                 String className = reader.getClassMetadata().getClassName();
-                // 跳过 JDK 类（判断是否以 java. 或 javax. 开头）
-//                if (className.startsWith("java.") || className.startsWith("javax.") || className.startsWith("jdk.") || className.startsWith("com.sun.") || className.startsWith("sun.")) {
-//                    continue;
-//                }
                 try {
                     Class<?> clazz = Class.forName(className, false, classLoader);
                     if (predicate.test(clazz)) {

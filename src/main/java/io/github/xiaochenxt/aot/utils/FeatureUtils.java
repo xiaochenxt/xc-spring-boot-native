@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,7 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 /**
  * 简化注册，仅限在{@link Feature}中使用
@@ -237,17 +239,19 @@ public class FeatureUtils {
         }
     }
 
-
-
     public List<Class<?>> collectClass(String... packages) {
         return collectClass(null, packages);
+    }
+
+    public List<Class<?>> collectClass(Collection<String> packages) {
+        return collectClass(null, packages.toArray(new String[0]));
     }
 
     public List<Class<?>> collectClass(Predicate<Class<?>> predicate, String... packages) {
         List<Class<?>> classes = new ArrayList<>();
         for (String basePackage : packages) {
             try {
-                List<String> classNames = findClassNamesInPackage(basePackage);
+                Set<String> classNames = findClassNames(basePackage);
                 for (String className : classNames) {
                     // 过滤掉Spring相关的生成类
                     // 详见：org.springframework.aot.generate.ClassNameGenerator
@@ -269,11 +273,11 @@ public class FeatureUtils {
         return classes;
     }
 
-    public List<String> collectClassNames(String... packages) {
-        List<String> classNames = new ArrayList<>();
+    public Set<String> collectClassNames(String... packages) {
+        Set<String> classNames = new HashSet<>();
         for (String basePackage : packages) {
             try {
-                List<String> names = findClassNamesInPackage(basePackage);
+                Set<String> names = findClassNames(basePackage);
                 for (String className : names) {
                     // 过滤掉Spring相关的生成类
                     // 详见：org.springframework.aot.generate.ClassNameGenerator
@@ -293,16 +297,9 @@ public class FeatureUtils {
 
     public List<Class<?>> findClasses(Predicate<Class<?>> predicate) throws IOException {
         List<Class<?>> result = new ArrayList<>();
-        List<String> allClassNames = findClassNames();
+        Set<String> allClassNames = findClassNames();
 
         for (String className : allClassNames) {
-            // 跳过JDK类
-//            if (className.startsWith("java.") || className.startsWith("javax.")
-//                    || className.startsWith("jdk.") || className.startsWith("com.sun.")
-//                    || className.startsWith("sun.")) {
-//                continue;
-//            }
-
             try {
                 Class<?> clazz = Class.forName(className, false, classLoader);
                 if (predicate.test(clazz)) {
@@ -315,15 +312,56 @@ public class FeatureUtils {
         return result;
     }
 
-    public List<String> findClassNamesInPackage(String packageName) throws IOException {
-        List<String> classNames = new ArrayList<>();
+    public void findClassesInDirectory(File directory, String packageName, Set<String> classNames) {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return;
+        }
+        for (File file : files) {
+            String filename = file.getName();
+            if (file.isDirectory()) {
+                String newPackage = packageName.isEmpty() ? filename : (packageName + "." + filename);
+                findClassesInDirectory(file, newPackage, classNames);
+            } else if (filename.endsWith(".class")) {
+                String fullClassName = filename.substring(0, filename.length() - 6);
+                String className = packageName.isEmpty() ? fullClassName : packageName + '.' + fullClassName;
+                classNames.add(className);
+            }
+        }
+    }
+
+    public void findResourcesInDirectory(File directory, String parentPath, Set<String> resources) {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return;
+        }
+        for (File file : files) {
+            String fileName = file.getName();
+            String currentPath = parentPath.isEmpty() ? fileName : parentPath + "/" + fileName;
+
+            if (file.isDirectory()) {
+                findResourcesInDirectory(file, currentPath, resources);
+            } else {
+                if (!fileName.endsWith(".class")) {
+                    resources.add(currentPath);
+                }
+            }
+        }
+    }
+
+    /**
+     * 查找指定包下的类
+     * @param packageName
+     * @return
+     * @throws IOException
+     */
+    public Set<String> findClassNames(String packageName) throws IOException {
+        Set<String> classNames = new HashSet<>();
         String path = packageName.replace('.', '/');
         Enumeration<URL> resources = classLoader.getResources(path);
-
         while (resources.hasMoreElements()) {
             URL resource = resources.nextElement();
             String protocol = resource.getProtocol();
-
             if ("file".equals(protocol)) {
                 try {
                     File directory = new File(URLDecoder.decode(resource.getFile(), StandardCharsets.UTF_8));
@@ -340,64 +378,6 @@ public class FeatureUtils {
                     while (entries.hasMoreElements()) {
                         JarEntry entry = entries.nextElement();
                         String entryName = entry.getName();
-                        if (entryName.startsWith(path) && entryName.endsWith(".class") && !entry.isDirectory()) {
-                            String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
-                            classNames.add(className);
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        return classNames;
-    }
-
-    public void findClassesInDirectory(File directory, String packageName, List<String> classNames) {
-        File[] files = directory.listFiles();
-        if (files == null) {
-            return;
-        }
-
-        for (File file : files) {
-            String filename = file.getName();
-            if (file.isDirectory()) {
-                String newPackage = packageName.isEmpty() ? filename : (packageName + "." + filename);
-                findClassesInDirectory(file, newPackage, classNames);
-            } else if (filename.endsWith(".class")) {
-                String fullClassName = filename.substring(0, filename.length() - 6);
-                String className = packageName.isEmpty() ? fullClassName : packageName + '.' + fullClassName;
-                classNames.add(className);
-            }
-        }
-    }
-
-    public List<String> findClassNames() throws IOException {
-        List<String> classNames = new ArrayList<>();
-
-        // 获取所有类路径根
-        Enumeration<URL> roots = classLoader.getResources("");
-        while (roots.hasMoreElements()) {
-            URL root = roots.nextElement();
-            String protocol = root.getProtocol();
-
-            if ("file".equals(protocol)) {
-                try {
-                    File rootDir = new File(URLDecoder.decode(root.getFile(), StandardCharsets.UTF_8));
-                    if (rootDir.exists() && rootDir.isDirectory()) {
-                        findClassesInDirectory(rootDir, "", classNames);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            } else if ("jar".equals(protocol)) {
-                String jarPath = root.getFile().substring(5, root.getFile().indexOf('!'));
-                try (JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8))) {
-                    Enumeration<JarEntry> entries = jar.entries();
-                    while (entries.hasMoreElements()) {
-                        JarEntry entry = entries.nextElement();
-                        String entryName = entry.getName();
                         if (entryName.endsWith(".class") && !entry.isDirectory()) {
                             String className = entryName.replace('/', '.').substring(0, entryName.length() - 6);
                             classNames.add(className);
@@ -408,28 +388,16 @@ public class FeatureUtils {
                 }
             }
         }
-
         return classNames;
     }
 
-    public void findResourcesInDirectory(File directory, String parentPath, Set<String> resources) {
-        File[] files = directory.listFiles();
-        if (files == null) {
-            return;
-        }
-
-        for (File file : files) {
-            String fileName = file.getName();
-            String currentPath = parentPath.isEmpty() ? fileName : parentPath + "/" + fileName;
-
-            if (file.isDirectory()) {
-                findResourcesInDirectory(file, currentPath, resources);
-            } else {
-                if (!fileName.endsWith(".class")) {
-                    resources.add(currentPath);
-                }
-            }
-        }
+    /**
+     * 查找根目录的类
+     * @return
+     * @throws IOException
+     */
+    public Set<String> findClassNames() throws IOException {
+        return findClassNames("");
     }
 
     /**
@@ -484,6 +452,25 @@ public class FeatureUtils {
      */
     public Set<String> findResources() throws IOException {
         return findResources("");
+    }
+
+    /**
+     * 获取启动类
+     * @return
+     * @throws IOException
+     */
+    public List<Class<?>> findMainClasses() throws IOException {
+        return findClasses(c -> Arrays.stream(c.getMethods()).anyMatch(m -> m.getName().equals("main") && Modifier.isPublic(m.getModifiers()) && Modifier.isStatic(m.getModifiers())));
+    }
+
+
+    /**
+     * 获取启动类所在包名
+     * @return
+     * @throws IOException
+     */
+    public Set<String> findMainPackages() throws IOException {
+        return findMainClasses().stream().map(Class::getPackageName).collect(Collectors.toSet());
     }
 
 }
