@@ -80,12 +80,24 @@ public class AotUtils {
     public void registerPattern(TypeReference typeReference, String... resources) {
         for (String resource : resources) {
             hints.resources().registerPattern(builder -> builder.includes(typeReference, resource));
+            System.out.println("include reachableType "+typeReference.getName()+" resource " + resource);
         }
     }
 
     public void registerPatternIfPresent(String location, String... resources) {
+        if (classLoader.getResource(location) == null) return;
+        registerPattern(resources);
+    }
+
+    /**
+     * 与{@code registerPattern}不同，不支持模糊匹配路径注册
+     * @param resources
+     */
+    public void registerResourcesIfPresent(String... resources) {
         for (String resource : resources) {
-            hints.resources().registerPatternIfPresent(classLoader, location, builder -> builder.includes(resource));
+            if (classLoader.getResource(resource) == null) continue;
+            hints.resources().registerPattern(resource);
+            System.out.println("include resource " + resource);
         }
     }
 
@@ -99,6 +111,7 @@ public class AotUtils {
     public void excludePattern(TypeReference typeReference, String... resources) {
         for (String resource : resources) {
             hints.resources().registerPattern(builder -> builder.excludes(typeReference, resource));
+            System.out.println("exclude reachableType "+typeReference.getName()+" resource " + resource);
         }
     }
 

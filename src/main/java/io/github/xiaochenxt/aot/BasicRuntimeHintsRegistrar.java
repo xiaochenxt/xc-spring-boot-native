@@ -22,7 +22,7 @@ public class BasicRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
      * @param aotUtils
      */
     private void staticResource(AotUtils aotUtils) {
-        aotUtils.registerPatternIfPresent("/","static/*");
+        aotUtils.registerPatternIfPresent("static","static/*");
     }
 
 }
