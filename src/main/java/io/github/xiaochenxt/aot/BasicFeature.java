@@ -10,7 +10,7 @@ import java.lang.invoke.SerializedLambda;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Set;
 
 /**
  * 基本注册，解决了一些代理检测无法自动配置的场景
@@ -36,6 +36,7 @@ class BasicFeature implements Feature {
         captcha(featureUtils, access);
         phonenumbers(featureUtils, access);
         serializedLambda(featureUtils, access);
+        graalJs(featureUtils, access);
     }
 
     /**
@@ -102,7 +103,7 @@ class BasicFeature implements Feature {
                 }
             }
             // 需将运行时的java.home设置为当前目录
-            RuntimeSystemProperties.register("java.home", "./");
+            fe.registerSystemProperty("java.home", "./");
             System.out.println("字体依赖lib文件夹，需要带上它一起打包");
         }, Font.class);
     }
@@ -186,10 +187,20 @@ class BasicFeature implements Feature {
         access.registerReachabilityHandler(duringAnalysisAccess -> {
             RuntimeSerialization.register(SerializedLambda.class);
             try {
-                List<Class<?>> classes = featureUtils.collectClass(featureUtils.findMainPackages());
+                Set<Class<?>> classes = featureUtils.collectClass(featureUtils.findMainPackages());
                 classes.forEach(featureUtils::registerSerializationLambdaCapturingClass);
             } catch (Exception ignored) {}
         }, SerializedLambda.class);
+    }
+
+    private void graalJs(FeatureUtils featureUtils, BeforeAnalysisAccess access) {
+        Class<?> graalJs = featureUtils.loadClass("com.oracle.truffle.js.scriptengine.GraalJSScriptEngine");
+        if (graalJs != null) {
+            access.registerReachabilityHandler(duringAnalysisAccess -> {
+                // 抑制 -Dtruffle.UseFallbackRuntime=true 带来的因为未启用运行时优化导致性能降低的警告
+                featureUtils.registerSystemProperty("polyglot.engine.WarnInterpreterOnly", "false");
+            }, graalJs);
+        }
     }
 
 }

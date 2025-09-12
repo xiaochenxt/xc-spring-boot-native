@@ -1,5 +1,6 @@
 package io.github.xiaochenxt.aot.utils;
 
+import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.hosted.*;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
@@ -7,6 +8,7 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
@@ -69,6 +71,15 @@ public class FeatureUtils {
             RuntimeReflection.register(c.getDeclaredFields());
             System.out.println("registering reflect " + c.getName());
         }
+    }
+
+    public void registerReflection(Executable... executables) {
+        List<String> s = new ArrayList<>();
+        for (Executable executable : executables) {
+            RuntimeReflection.register(executable);
+            s.add(executable.toString());
+        }
+        System.out.println("registering reflect " + String.join(", ", s));
     }
 
     public void registerReflectionBasic(Class<?>... classes) {
@@ -146,6 +157,16 @@ public class FeatureUtils {
             RuntimeJNIAccess.register(c.getDeclaredFields());
             System.out.println("registering jni " + c.getName());
         }
+    }
+
+    public void registerSystemProperty(String key, String value) {
+        RuntimeSystemProperties.register(key, value);
+        System.out.println("set system properties " + key + "=" + value);
+    }
+
+    public void setOption(String optionName, String value) {
+        RuntimeOptions.set(optionName, value);
+        System.out.println("set options " + optionName + "=" + value);
     }
 
     public void registerResource(Class<?> c, String... resources) {
@@ -239,16 +260,16 @@ public class FeatureUtils {
         }
     }
 
-    public List<Class<?>> collectClass(String... packages) {
+    public Set<Class<?>> collectClass(String... packages) {
         return collectClass(null, packages);
     }
 
-    public List<Class<?>> collectClass(Collection<String> packages) {
+    public Set<Class<?>> collectClass(Collection<String> packages) {
         return collectClass(null, packages.toArray(new String[0]));
     }
 
-    public List<Class<?>> collectClass(Predicate<Class<?>> predicate, String... packages) {
-        List<Class<?>> classes = new ArrayList<>();
+    public Set<Class<?>> collectClass(Predicate<Class<?>> predicate, String... packages) {
+        Set<Class<?>> classes = new HashSet<>();
         for (String basePackage : packages) {
             try {
                 Set<String> classNames = findClassNames(basePackage);
@@ -291,12 +312,12 @@ public class FeatureUtils {
         return classNames;
     }
 
-    public List<Class<?>> findSpringBootApplicationClasses() throws IOException {
+    public Set<Class<?>> findSpringBootApplicationClasses() throws IOException {
         return findClasses(c -> Arrays.stream(c.getAnnotations()).anyMatch(annotation -> annotation.annotationType().getName().equals("org.springframework.boot.autoconfigure.SpringBootApplication")));
     }
 
-    public List<Class<?>> findClasses(Predicate<Class<?>> predicate) throws IOException {
-        List<Class<?>> result = new ArrayList<>();
+    public Set<Class<?>> findClasses(Predicate<Class<?>> predicate) throws IOException {
+        Set<Class<?>> result = new HashSet<>();
         Set<String> allClassNames = findClassNames();
 
         for (String className : allClassNames) {
@@ -459,7 +480,7 @@ public class FeatureUtils {
      * @return
      * @throws IOException
      */
-    public List<Class<?>> findMainClasses() throws IOException {
+    public Set<Class<?>> findMainClasses() throws IOException {
         return findClasses(c -> Arrays.stream(c.getMethods()).anyMatch(m -> m.getName().equals("main") && Modifier.isPublic(m.getModifiers()) && Modifier.isStatic(m.getModifiers())));
     }
 

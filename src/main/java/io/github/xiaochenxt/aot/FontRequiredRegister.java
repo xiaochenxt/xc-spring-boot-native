@@ -33,6 +33,18 @@ class FontRequiredRegister {
             RuntimeReflection.register(dMarlinCtor);
         }
 
+        Class<?> nativePrngClass = featureUtils.loadClass("sun.security.provider.NativePRNG");
+        if (nativePrngClass != null) {
+            RuntimeReflection.register(nativePrngClass);
+            Class<?> secureRandomParameters = featureUtils.loadClass("java.security.SecureRandomParameters");
+            if (secureRandomParameters != null) {
+                try {
+                    Constructor<?> nativePrngCtor = nativePrngClass.getConstructor(secureRandomParameters);
+                    RuntimeReflection.register(nativePrngCtor);
+                } catch (Exception ignored) {}
+            }
+        }
+
         Class<?> shaClass = featureUtils.loadClass("sun.security.provider.SHA");
         if (shaClass != null) {
             RuntimeReflection.register(shaClass);
@@ -504,6 +516,7 @@ class FontRequiredRegister {
         }
 
         featureUtils.registerResource(Font.class, "META-INF/services/javax.imageio.spi.ImageInputStreamSpi",
+                "META-INF/services/javax.imageio.spi.ImageOutputStreamSpi",
                 "META-INF/services/javax.imageio.spi.ImageReaderSpi",
                 "META-INF/services/javax.imageio.spi.ImageTranscoderSpi",
                 "META-INF/services/javax.imageio.spi.ImageWriterSpi",

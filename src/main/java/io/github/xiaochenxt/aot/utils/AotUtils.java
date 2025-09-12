@@ -130,7 +130,7 @@ public class AotUtils {
         registerReflectionIfPresent(defaultMemberCategory, classes);
     }
 
-    public void registerReflection(MemberCategory[] memberCategories, List<Class<?>> classes) {
+    public void registerReflection(MemberCategory[] memberCategories, Collection<Class<?>> classes) {
         for (Class<?> clazz : classes) {
             try {
                 hints.reflection().registerType(clazz, memberCategories);
@@ -156,15 +156,15 @@ public class AotUtils {
         registerReflection(defaultMemberCategory, classes);
     }
 
-    public void registerReflection(List<Class<?>> classes) {
+    public void registerReflection(Collection<Class<?>> classes) {
         registerReflection(defaultMemberCategory, classes);
     }
 
-    public void registerReflection(List<Class<?>> classes, MemberCategory memberCategory) {
+    public void registerReflection(Collection<Class<?>> classes, MemberCategory memberCategory) {
         registerReflection(new MemberCategory[]{memberCategory}, classes);
     }
 
-    public void registerJni(MemberCategory[] memberCategories, List<Class<?>> classes) {
+    public void registerJni(MemberCategory[] memberCategories, Collection<Class<?>> classes) {
         for (Class<?> c : classes) {
             hints.jni().registerType(c, memberCategories);
             System.out.println("registering jni " + c.getName());
@@ -182,7 +182,7 @@ public class AotUtils {
         registerJni(defaultMemberCategory, classes);
     }
 
-    public void registerJni(List<Class<?>> classes) {
+    public void registerJni(Collection<Class<?>> classes) {
         registerJni(defaultMemberCategory, classes);
     }
 
@@ -206,7 +206,7 @@ public class AotUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public void registerSerializable(List<Class<?>> classes) {
+    public void registerSerializable(Collection<Class<?>> classes) {
         for (Class<?> c : classes) {
             if (!Serializable.class.isAssignableFrom(c)) continue;
             hints.serialization().registerType((Class<? extends Serializable>) c);
@@ -226,12 +226,12 @@ public class AotUtils {
         }
     }
 
-    public List<Class<?>> collectClass(String... packages) {
+    public Set<Class<?>> collectClass(String... packages) {
         return collectClass(null , packages);
     }
 
-    public List<Class<?>> collectClass(Predicate<Class<?>> predicate, String... packages) {
-        List<Class<?>> classes = new ArrayList<>();
+    public Set<Class<?>> collectClass(Predicate<Class<?>> predicate, String... packages) {
+        Set<Class<?>> classes = new HashSet<>();
         for (String basePackage : packages) {
             try {
                 // 扫描该包及其子包下的所有类
@@ -291,8 +291,8 @@ public class AotUtils {
         return classes;
     }
 
-    public List<Class<?>> findSpringBootApplicationClasses() throws IOException {
-        List<Class<?>> result = new ArrayList<>();
+    public Set<Class<?>> findSpringBootApplicationClasses() throws IOException {
+        Set<Class<?>> result = new HashSet<>();
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(classLoader);
         CachingMetadataReaderFactory readerFactory = new CachingMetadataReaderFactory(resolver);
         // 扫描所有类文件
@@ -315,8 +315,8 @@ public class AotUtils {
         return result;
     }
 
-    public List<Class<?>> findClasses(Predicate<Class<?>> predicate) throws IOException {
-        List<Class<?>> result = new ArrayList<>();
+    public Set<Class<?>> findClasses(Predicate<Class<?>> predicate) throws IOException {
+        Set<Class<?>> result = new HashSet<>();
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(classLoader);
         CachingMetadataReaderFactory readerFactory = new CachingMetadataReaderFactory(resolver);
         // 扫描所有类文件

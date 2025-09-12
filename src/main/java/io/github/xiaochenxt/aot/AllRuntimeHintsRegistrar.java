@@ -5,7 +5,7 @@ import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 
 /**
  * 将springboot项目中不含第三方库的所有类注册反射调用，为所有实现了Serializable的注册序列化，可解决90%的运行时错误问题
@@ -18,7 +18,7 @@ public class AllRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
     public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
         try {
             AotUtils aotUtils = new AotUtils(hints, classLoader);
-            List<Class<?>> classes = aotUtils.collectClass(aotUtils.findSpringBootApplicationClasses().getFirst().getPackageName());
+            Set<Class<?>> classes = aotUtils.collectClass(aotUtils.findSpringBootApplicationClasses().stream().map(Class::getPackageName).toArray(String[]::new));
             aotUtils.registerReflection(classes);
             aotUtils.registerPattern("*.properties"
             //        , "*.types", "*.ttf", "*.ini"
