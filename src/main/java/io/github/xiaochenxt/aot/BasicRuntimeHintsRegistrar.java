@@ -4,6 +4,10 @@ import io.github.xiaochenxt.aot.utils.AotUtils;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 /**
  * 基本注册
  * @author xiaochen
@@ -15,6 +19,7 @@ public class BasicRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
     public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
         AotUtils aotUtils = new AotUtils(hints, classLoader);
         staticResource(aotUtils);
+        aotUtils.registerReflection(LinkedHashMap.class, HashMap.class, ArrayList.class, List.class, Map.class, Set.class, ConcurrentMap.class, ConcurrentHashMap.class, HashSet.class);
     }
 
     /**

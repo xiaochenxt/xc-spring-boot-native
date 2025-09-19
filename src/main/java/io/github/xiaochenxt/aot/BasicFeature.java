@@ -37,6 +37,7 @@ class BasicFeature implements Feature {
         phonenumbers(featureUtils, access);
         serializedLambda(featureUtils, access);
         graalJs(featureUtils, access);
+        jetty(featureUtils, access);
     }
 
     /**
@@ -200,6 +201,17 @@ class BasicFeature implements Feature {
                 // 抑制 -Dtruffle.UseFallbackRuntime=true 带来的因为未启用运行时优化导致性能降低的警告
                 featureUtils.registerSystemProperty("polyglot.engine.WarnInterpreterOnly", "false");
             }, graalJs);
+        }
+    }
+
+    private void jetty(FeatureUtils featureUtils, BeforeAnalysisAccess access) {
+        Class<?> jettyWebSocket = featureUtils.loadClass("org.eclipse.jetty.ee10.websocket.jakarta.server.JakartaWebSocketServerContainer");
+        if (jettyWebSocket != null) {
+            access.registerReachabilityHandler(duringAnalysisAccess -> {
+                try {
+                    JettyWebSocketRequiredRegister.INSTANCE.register(featureUtils);
+                } catch (Exception ignored) {}
+            }, jettyWebSocket);
         }
     }
 
