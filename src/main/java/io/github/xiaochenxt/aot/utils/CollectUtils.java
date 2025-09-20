@@ -3,6 +3,8 @@ package io.github.xiaochenxt.aot.utils;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -323,6 +325,59 @@ public class CollectUtils {
      */
     public Set<String> findMainPackages() throws IOException {
         return findMainClasses().stream().map(Class::getPackageName).collect(Collectors.toSet());
+    }
+
+    public Method[] collectMethods(Class<?> c, String... name) {
+        return collectMethods(c.getDeclaredMethods(), name);
+    }
+
+    public Method[] collectMethods(Method[] m, String... name) {
+        if (name == null || name.length == 0) return m;
+        return collectMethods(m, method -> {
+            for (String s : name) {
+                if (method.getName().equals(s)) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    public Method[] collectMethods(Method[] m, Predicate<Method> predicate) {
+        if (predicate == null) return m;
+        Set<Method> methods = new HashSet<>();
+        for (Method method : m) {
+            if (predicate.test(method)) methods.add(method);
+        }
+        return methods.toArray(new Method[0]);
+    }
+
+    public Field[] collectFields(Class<?> c, String... name) {
+        return collectFields(c.getDeclaredFields(), name);
+    }
+
+    public Field[] collectFields(Field[] f, String... name) {
+        if (name == null || name.length == 0) return f;
+        List<String> names = new ArrayList<>(Arrays.asList(name));
+        return collectFields(f, field -> {
+            for (Iterator<String> iterator = names.iterator(); iterator.hasNext(); ) {
+                String s = iterator.next();
+                if (field.getName().equals(s)) {
+                    iterator.remove();
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    public Field[] collectFields(Field[] f, Predicate<Field> predicate) {
+        if (predicate == null) return f;
+        Set<Field> fields = new HashSet<>();
+        for (Field field : f) {
+            if (predicate.test(field)) fields.add(field);
+        }
+        return fields.toArray(new Field[0]);
     }
 
 }

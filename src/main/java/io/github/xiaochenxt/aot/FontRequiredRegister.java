@@ -5,12 +5,6 @@ import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import java.awt.*;
-import java.awt.geom.Path2D;
-import java.awt.geom.Point2D;
-import java.awt.image.*;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.util.Locale;
 
 /**
@@ -24,32 +18,24 @@ class FontRequiredRegister {
 
     void register(FeatureUtils featureUtils) throws NoSuchMethodException, NoSuchFieldException, ClassNotFoundException {
         // ============================ 反射注册 (RuntimeReflection) ============================
-        featureUtils.registerReflectionIfPresent("javax.imageio.spi.ImageReaderSpi","javax.imageio.spi.ImageWriterSpi");
+        featureUtils.registerReflectionIfPresent("javax.imageio.spi.ImageReaderSpi", "javax.imageio.spi.ImageWriterSpi");
 
         Class<?> dMarlinClass = featureUtils.loadClass("sun.java2d.marlin.DMarlinRenderingEngine");
         if (dMarlinClass != null) {
             RuntimeReflection.register(dMarlinClass);
-            Constructor<?> dMarlinCtor = dMarlinClass.getConstructor();
-            RuntimeReflection.register(dMarlinCtor);
+            RuntimeReflection.register(dMarlinClass.getDeclaredConstructors());
         }
 
         Class<?> nativePrngClass = featureUtils.loadClass("sun.security.provider.NativePRNG");
         if (nativePrngClass != null) {
             RuntimeReflection.register(nativePrngClass);
-            Class<?> secureRandomParameters = featureUtils.loadClass("java.security.SecureRandomParameters");
-            if (secureRandomParameters != null) {
-                try {
-                    Constructor<?> nativePrngCtor = nativePrngClass.getConstructor(secureRandomParameters);
-                    RuntimeReflection.register(nativePrngCtor);
-                } catch (Exception ignored) {}
-            }
+            RuntimeReflection.register(nativePrngClass.getDeclaredConstructors());
         }
 
         Class<?> shaClass = featureUtils.loadClass("sun.security.provider.SHA");
         if (shaClass != null) {
             RuntimeReflection.register(shaClass);
-            Constructor<?> shaCtor = shaClass.getConstructor();
-            RuntimeReflection.register(shaCtor);
+            RuntimeReflection.register(shaClass.getDeclaredConstructors());
         }
 
         // ============================ JNI注册 (RuntimeJNIAccess) ============================
@@ -61,268 +47,229 @@ class FontRequiredRegister {
         Class<?> alphaCompositeClass = featureUtils.loadClass("java.awt.AlphaComposite");
         if (alphaCompositeClass != null) {
             RuntimeJNIAccess.register(alphaCompositeClass);
-            RuntimeJNIAccess.register(alphaCompositeClass.getDeclaredField("extraAlpha"));
-            RuntimeJNIAccess.register(alphaCompositeClass.getDeclaredField("rule"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(alphaCompositeClass, "extraAlpha", "rule"));
         }
 
         Class<?> colorClass = featureUtils.loadClass("java.awt.Color");
         if (colorClass != null) {
             RuntimeJNIAccess.register(colorClass);
-            RuntimeJNIAccess.register(colorClass.getMethod("getRGB"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(colorClass, "getRGB"));
         }
 
         Class<?> geClass = featureUtils.loadClass("java.awt.GraphicsEnvironment");
         if (geClass != null) {
             RuntimeJNIAccess.register(geClass);
-            RuntimeJNIAccess.register(geClass.getMethod("getLocalGraphicsEnvironment"));
-            RuntimeJNIAccess.register(geClass.getMethod("isHeadless"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(geClass, "getLocalGraphicsEnvironment", "isHeadless"));
         }
 
         Class<?> rectangleClass = featureUtils.loadClass("java.awt.Rectangle");
         if (rectangleClass != null) {
             RuntimeJNIAccess.register(rectangleClass);
-            RuntimeJNIAccess.register(rectangleClass.getConstructor(int.class, int.class, int.class, int.class));
+            RuntimeJNIAccess.register(rectangleClass.getDeclaredConstructors());
         }
 
         Class<?> atClass = featureUtils.loadClass("java.awt.geom.AffineTransform");
         if (atClass != null) {
             RuntimeJNIAccess.register(atClass);
-            RuntimeJNIAccess.register(atClass.getDeclaredField("m00"));
-            RuntimeJNIAccess.register(atClass.getDeclaredField("m01"));
-            RuntimeJNIAccess.register(atClass.getDeclaredField("m02"));
-            RuntimeJNIAccess.register(atClass.getDeclaredField("m10"));
-            RuntimeJNIAccess.register(atClass.getDeclaredField("m11"));
-            RuntimeJNIAccess.register(atClass.getDeclaredField("m12"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(atClass, "m00", "m01", "m02", "m10", "m11", "m12"));
         }
 
         Class<?> gpClass = featureUtils.loadClass("java.awt.geom.GeneralPath");
         if (gpClass != null) {
             RuntimeJNIAccess.register(gpClass);
-            RuntimeJNIAccess.register(gpClass.getConstructor());
-            RuntimeJNIAccess.register(gpClass.getDeclaredConstructor(int.class, byte[].class, int.class, float[].class, int.class));
+            RuntimeJNIAccess.register(gpClass.getDeclaredConstructors());
         }
 
-        Class<?> path2DClass = Path2D.class;
-        RuntimeJNIAccess.register(path2DClass);
-        RuntimeJNIAccess.register(path2DClass.getDeclaredField("numTypes"));
-        RuntimeJNIAccess.register(path2DClass.getDeclaredField("pointTypes"));
-        RuntimeJNIAccess.register(path2DClass.getDeclaredField("windingRule"));
+        Class<?> path2DClass = featureUtils.loadClass("java.awt.geom.Path2D");
+        if (path2DClass != null) {
+            RuntimeJNIAccess.register(path2DClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(path2DClass, "numTypes", "pointTypes", "windingRule"));
+        }
 
         Class<?> path2DFloatClass = featureUtils.loadClass("java.awt.geom.Path2D$Float");
         if (path2DFloatClass != null) {
             RuntimeJNIAccess.register(path2DFloatClass);
-            RuntimeJNIAccess.register(path2DFloatClass.getDeclaredField("floatCoords"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(path2DFloatClass,"floatCoords"));
         }
 
-        Class<?> p2dFloatClass = Point2D.Float.class;
-        RuntimeJNIAccess.register(p2dFloatClass);
-        RuntimeJNIAccess.register(p2dFloatClass.getDeclaredField("x"));
-        RuntimeJNIAccess.register(p2dFloatClass.getDeclaredField("y"));
-        RuntimeJNIAccess.register(p2dFloatClass.getConstructor(float.class, float.class));
-
-
+        Class<?> p2dFloatClass = featureUtils.loadClass("java.awt.geom.Point2D$Float");
+        if (p2dFloatClass != null) {
+            RuntimeJNIAccess.register(p2dFloatClass);
+            RuntimeJNIAccess.register(p2dFloatClass.getDeclaredFields());
+            RuntimeJNIAccess.register(p2dFloatClass.getDeclaredConstructors());
+        }
 
         Class<?> r2dFloatClass = featureUtils.loadClass("java.awt.geom.Rectangle2D$Float");
         if (r2dFloatClass != null) {
             RuntimeJNIAccess.register(r2dFloatClass);
-            RuntimeJNIAccess.register(r2dFloatClass.getDeclaredField("height"));
-            RuntimeJNIAccess.register(r2dFloatClass.getDeclaredField("width"));
-            RuntimeJNIAccess.register(r2dFloatClass.getDeclaredField("x"));
-            RuntimeJNIAccess.register(r2dFloatClass.getDeclaredField("y"));
-            RuntimeJNIAccess.register(r2dFloatClass.getConstructor());
-            RuntimeJNIAccess.register(r2dFloatClass.getConstructor(float.class, float.class, float.class, float.class));
+            RuntimeJNIAccess.register(r2dFloatClass.getDeclaredFields());
+            RuntimeJNIAccess.register(r2dFloatClass.getDeclaredConstructors());
         }
 
-        Class<BufferedImage> biClass = BufferedImage.class;
-        RuntimeJNIAccess.register(biClass);
-        RuntimeJNIAccess.register(biClass.getDeclaredField("colorModel"));
-        RuntimeJNIAccess.register(biClass.getDeclaredField("imageType"));
-        RuntimeJNIAccess.register(biClass.getDeclaredField("raster"));
-        RuntimeJNIAccess.register(biClass.getMethod("getRGB", int.class, int.class, int.class, int.class, int[].class, int.class, int.class));
-        RuntimeJNIAccess.register(biClass.getMethod("setRGB", int.class, int.class, int.class, int.class, int[].class, int.class, int.class));
+        Class<?> biClass = featureUtils.loadClass("java.awt.image.BufferedImage");
+        if (biClass != null) {
+            RuntimeJNIAccess.register(biClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(biClass, "colorModel", "imageType", "raster"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(biClass, "getRGB","setRGB"));
+        }
 
-        Class<ColorModel> cmClass = ColorModel.class;
-        RuntimeJNIAccess.register(cmClass);
-        RuntimeJNIAccess.register(cmClass.getDeclaredField("colorSpace"));
-        RuntimeJNIAccess.register(cmClass.getDeclaredField("colorSpaceType"));
-        RuntimeJNIAccess.register(cmClass.getDeclaredField("isAlphaPremultiplied"));
-        RuntimeJNIAccess.register(cmClass.getDeclaredField("is_sRGB"));
-        RuntimeJNIAccess.register(cmClass.getDeclaredField("nBits"));
-        RuntimeJNIAccess.register(cmClass.getDeclaredField("numComponents"));
-        RuntimeJNIAccess.register(cmClass.getDeclaredField("supportsAlpha"));
-        RuntimeJNIAccess.register(cmClass.getDeclaredField("transparency"));
-        RuntimeJNIAccess.register(cmClass.getMethod("getRGBdefault"));
+        Class<?> cmClass = featureUtils.loadClass("java.awt.image.ColorModel");
+        if (cmClass != null) {
+            RuntimeJNIAccess.register(cmClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(cmClass, "colorSpace", "colorSpaceType", "isAlphaPremultiplied", "is_sRGB", "nBits",
+                    "numComponents", "supportsAlpha", "transparency"));
+            RuntimeJNIAccess.register(cmClass.getMethod("getRGBdefault"));
+        }
 
-        Class<IndexColorModel> icmClass = IndexColorModel.class;
-        RuntimeJNIAccess.register(icmClass);
-        RuntimeJNIAccess.register(icmClass.getDeclaredField("allgrayopaque"));
-        RuntimeJNIAccess.register(icmClass.getDeclaredField("colorData"));
-        RuntimeJNIAccess.register(icmClass.getDeclaredField("map_size"));
-        RuntimeJNIAccess.register(icmClass.getDeclaredField("rgb"));
-        RuntimeJNIAccess.register(icmClass.getDeclaredField("transparent_index"));
+        Class<?> icmClass = featureUtils.loadClass("java.awt.image.IndexColorModel");
+        if (icmClass != null) {
+            RuntimeJNIAccess.register(icmClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(icmClass, "allgrayopaque", "colorData", "map_size", "rgb", "transparent_index"));
+        }
 
-        Class<Raster> rasterClass = Raster.class;
-        RuntimeJNIAccess.register(rasterClass);
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("dataBuffer"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("height"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("minX"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("minY"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("numBands"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("numDataElements"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("sampleModel"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("sampleModelTranslateX"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("sampleModelTranslateY"));
-        RuntimeJNIAccess.register(rasterClass.getDeclaredField("width"));
+        Class<?> rasterClass = featureUtils.loadClass("java.awt.image.Raster");
+        if (rasterClass != null) {
+            RuntimeJNIAccess.register(rasterClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(rasterClass, "dataBuffer", "height", "minX", "minY", "numBands", "numDataElements",
+                    "sampleModel", "sampleModelTranslateX", "sampleModelTranslateY", "width"));
+        }
 
-        Class<SampleModel> smClass = SampleModel.class;
-        RuntimeJNIAccess.register(smClass);
-        RuntimeJNIAccess.register(smClass.getDeclaredField("height"));
-        RuntimeJNIAccess.register(smClass.getDeclaredField("width"));
-        RuntimeJNIAccess.register(smClass.getMethod("getPixels", int.class, int.class, int.class, int.class, int[].class, DataBuffer.class));
-        RuntimeJNIAccess.register(smClass.getMethod("setPixels", int.class, int.class, int.class, int.class, int[].class, DataBuffer.class));
+        Class<?> smClass = featureUtils.loadClass("java.awt.image.SampleModel");
+        if (smClass != null) {
+            RuntimeJNIAccess.register(smClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(smClass, "height", "width"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(smClass, "getPixels","setPixels"));
+        }
 
-        Class<SinglePixelPackedSampleModel> sppsmClass = SinglePixelPackedSampleModel.class;
-        RuntimeJNIAccess.register(sppsmClass);
-        RuntimeJNIAccess.register(sppsmClass.getDeclaredField("bitMasks"));
-        RuntimeJNIAccess.register(sppsmClass.getDeclaredField("bitOffsets"));
-        RuntimeJNIAccess.register(sppsmClass.getDeclaredField("bitSizes"));
-        RuntimeJNIAccess.register(sppsmClass.getDeclaredField("maxBitSize"));
+        Class<?> sppsmClass = featureUtils.loadClass("java.awt.image.SinglePixelPackedSampleModel");
+        if (sppsmClass != null) {
+            RuntimeJNIAccess.register(sppsmClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(sppsmClass, "bitMasks", "bitOffsets", "bitSizes", "maxBitSize"));
+        }
 
         Class<Boolean> booleanClass = Boolean.class;
         RuntimeJNIAccess.register(booleanClass);
-        RuntimeJNIAccess.register(booleanClass.getMethod("getBoolean", String.class));
+        RuntimeJNIAccess.register(featureUtils.collectMethods(booleanClass,"getBoolean"));
+
+        Class<?> internalError = featureUtils.loadClass("java.lang.InternalError");
+        if (internalError != null) RuntimeJNIAccess.register(internalError.getDeclaredConstructors());
+        RuntimeJNIAccess.register(String[].class);
 
         Class<System> systemClass = System.class;
         RuntimeJNIAccess.register(systemClass);
-        RuntimeJNIAccess.register(systemClass.getMethod("load", String.class));
+        RuntimeJNIAccess.register(featureUtils.collectMethods(systemClass, "load"));
 
-        Class<?> sunHintsClass = featureUtils.classLoader().loadClass("sun.awt.SunHints");
-        RuntimeJNIAccess.register(sunHintsClass);
-        RuntimeJNIAccess.register(sunHintsClass.getDeclaredField("INTVAL_STROKE_PURE"));
+        Class<?> sunHintsClass = featureUtils.loadClass("sun.awt.SunHints");
+        if (sunHintsClass != null) {
+            RuntimeJNIAccess.register(sunHintsClass);
+            RuntimeJNIAccess.register(sunHintsClass.getDeclaredField("INTVAL_STROKE_PURE"));
+        }
 
         Class<?> sunToolkitClass = featureUtils.loadClass("sun.awt.SunToolkit");
         if (sunToolkitClass != null) {
             RuntimeJNIAccess.register(sunToolkitClass);
-            RuntimeJNIAccess.register(sunToolkitClass.getMethod("awtLock"));
-            RuntimeJNIAccess.register(sunToolkitClass.getMethod("awtLockNotify"));
-            RuntimeJNIAccess.register(sunToolkitClass.getMethod("awtLockNotifyAll"));
-            RuntimeJNIAccess.register(sunToolkitClass.getMethod("awtLockWait", long.class));
-            RuntimeJNIAccess.register(sunToolkitClass.getMethod("awtUnlock"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(sunToolkitClass, "awtLock", "awtLockNotify", "awtLockNotifyAll",
+                    "awtLockWait", "awtUnlock"));
         }
 
         Class<?> xErrorHandlerUtilClass = featureUtils.loadClass("sun.awt.X11.XErrorHandlerUtil");
         if (xErrorHandlerUtilClass != null) {
             RuntimeJNIAccess.register(xErrorHandlerUtilClass);
-            RuntimeJNIAccess.register(xErrorHandlerUtilClass.getDeclaredMethod("init", long.class));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(xErrorHandlerUtilClass,"init"));
         }
 
         Class<?> x11GraphicsConfigClass = featureUtils.loadClass("sun.awt.X11GraphicsConfig");
         if (x11GraphicsConfigClass != null) {
             RuntimeJNIAccess.register(x11GraphicsConfigClass);
-            RuntimeJNIAccess.register(x11GraphicsConfigClass.getDeclaredField("aData"));
-            RuntimeJNIAccess.register(x11GraphicsConfigClass.getDeclaredField("bitsPerPixel"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(x11GraphicsConfigClass, "aData", "bitsPerPixel"));
         }
 
         Class<?> x11GraphicsDeviceClass = featureUtils.loadClass("sun.awt.X11GraphicsDevice");
         if (x11GraphicsDeviceClass != null) {
             RuntimeJNIAccess.register(x11GraphicsDeviceClass);
-            RuntimeJNIAccess.register(x11GraphicsDeviceClass.getDeclaredMethod("addDoubleBufferVisual", int.class));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(x11GraphicsDeviceClass, "addDoubleBufferVisual"));
         }
 
         Class<?> icmColorDataClass = featureUtils.loadClass("sun.awt.image.BufImgSurfaceData$ICMColorData");
         if (icmColorDataClass != null) {
-            RuntimeJNIAccess.register(icmColorDataClass.getDeclaredField("pData"));
-            RuntimeJNIAccess.register(icmColorDataClass.getDeclaredConstructor(long.class));
+            RuntimeJNIAccess.register(featureUtils.collectFields(icmColorDataClass, "pData"));
+            RuntimeJNIAccess.register(icmColorDataClass.getDeclaredConstructors());
         }
 
         Class<?> integerComponentRasterClass = featureUtils.loadClass("sun.awt.image.IntegerComponentRaster");
         if (integerComponentRasterClass != null) {
             RuntimeJNIAccess.register(integerComponentRasterClass);
-            RuntimeJNIAccess.register(integerComponentRasterClass.getDeclaredField("data"));
-            RuntimeJNIAccess.register(integerComponentRasterClass.getDeclaredField("dataOffsets"));
-            RuntimeJNIAccess.register(integerComponentRasterClass.getDeclaredField("pixelStride"));
-            RuntimeJNIAccess.register(integerComponentRasterClass.getDeclaredField("scanlineStride"));
-            RuntimeJNIAccess.register(integerComponentRasterClass.getDeclaredField("type"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(integerComponentRasterClass, "data", "dataOffsets",
+                    "pixelStride", "scanlineStride", "type"));
         }
 
         Class<?> charToGlyphMapperClass = featureUtils.loadClass("sun.font.CharToGlyphMapper");
         if (charToGlyphMapperClass != null) {
             RuntimeJNIAccess.register(charToGlyphMapperClass);
-            RuntimeJNIAccess.register(charToGlyphMapperClass.getMethod("charToGlyph", int.class));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(charToGlyphMapperClass, "charToGlyph"));
         }
 
         Class<?> font2DClass = featureUtils.loadClass("sun.font.Font2D");
         if (font2DClass != null) {
             RuntimeJNIAccess.register(font2DClass);
-            RuntimeJNIAccess.register(font2DClass.getMethod("canDisplay", char.class));
-            RuntimeJNIAccess.register(font2DClass.getMethod("charToGlyph", int.class));
-            RuntimeJNIAccess.register(font2DClass.getMethod("charToVariationGlyph", int.class, int.class));
-            RuntimeJNIAccess.register(font2DClass.getDeclaredMethod("getMapper"));
-            RuntimeJNIAccess.register(font2DClass.getDeclaredMethod("getTableBytes", int.class));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(font2DClass, "canDisplay", "charToGlyph", "charToGlyphRaw", "charToVariationGlyph",
+                    "charToVariationGlyphRaw", "getMapper", "getTableBytes"));
         }
 
         Class<?> fontStrikeClass = featureUtils.loadClass("sun.font.FontStrike");
         if (fontStrikeClass != null) {
             RuntimeJNIAccess.register(fontStrikeClass);
-            RuntimeJNIAccess.register(fontStrikeClass.getDeclaredMethod("getGlyphMetrics", int.class));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(fontStrikeClass, "getGlyphMetrics"));
         }
 
         Class<?> fontUtilitiesClass = featureUtils.loadClass("sun.font.FontUtilities");
         if (fontUtilitiesClass != null) {
             RuntimeJNIAccess.register(fontUtilitiesClass);
-            RuntimeJNIAccess.register(fontUtilitiesClass.getMethod("debugFonts"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(fontUtilitiesClass, "debugFonts"));
         }
 
         Class<?> freetypeFontScalerClass = featureUtils.loadClass("sun.font.FreetypeFontScaler");
         if (freetypeFontScalerClass != null) {
             RuntimeJNIAccess.register(freetypeFontScalerClass);
-            RuntimeJNIAccess.register(freetypeFontScalerClass.getDeclaredMethod("invalidateScaler"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(freetypeFontScalerClass, "invalidateScaler"));
         }
 
         Class<?> glyphListClass = featureUtils.loadClass("sun.font.GlyphList");
         if (glyphListClass != null) {
             RuntimeJNIAccess.register(glyphListClass);
-            RuntimeJNIAccess.register(glyphListClass.getDeclaredField("gposx"));
-            RuntimeJNIAccess.register(glyphListClass.getDeclaredField("gposy"));
-            RuntimeJNIAccess.register(glyphListClass.getDeclaredField("images"));
-            RuntimeJNIAccess.register(glyphListClass.getDeclaredField("lcdRGBOrder"));
-            RuntimeJNIAccess.register(glyphListClass.getDeclaredField("lcdSubPixPos"));
-            RuntimeJNIAccess.register(glyphListClass.getDeclaredField("len"));
-            RuntimeJNIAccess.register(glyphListClass.getDeclaredField("positions"));
-            RuntimeJNIAccess.register(glyphListClass.getDeclaredField("usePositions"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(glyphListClass, "gposx", "gposy", "images", "lcdRGBOrder", "lcdSubPixPos",
+                    "len", "positions", "usePositions"));
         }
 
         Class<?> physicalStrikeClass = featureUtils.loadClass("sun.font.PhysicalStrike");
         if (physicalStrikeClass != null) {
             RuntimeJNIAccess.register(physicalStrikeClass);
-            RuntimeJNIAccess.register(physicalStrikeClass.getDeclaredField("pScalerContext"));
-            RuntimeJNIAccess.register(physicalStrikeClass.getDeclaredMethod("adjustPoint", Point2D.Float.class));
-            RuntimeJNIAccess.register(physicalStrikeClass.getDeclaredMethod("getGlyphPoint", int.class, int.class));
+            RuntimeJNIAccess.register(featureUtils.collectFields(physicalStrikeClass, "pScalerContext"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(physicalStrikeClass, "adjustPoint", "getGlyphPoint"));
         }
 
         Class<?> strikeMetricsClass = featureUtils.loadClass("sun.font.StrikeMetrics");
         if (strikeMetricsClass != null) {
             RuntimeJNIAccess.register(strikeMetricsClass);
-            RuntimeJNIAccess.register(strikeMetricsClass.getDeclaredConstructor(float.class, float.class, float.class, float.class, float.class, float.class, float.class, float.class, float.class, float.class));
+            RuntimeJNIAccess.register(strikeMetricsClass.getDeclaredConstructors());
         }
 
         Class<?> trueTypeFontClass = featureUtils.loadClass("sun.font.TrueTypeFont");
         if (trueTypeFontClass != null) {
             RuntimeJNIAccess.register(trueTypeFontClass);
-            RuntimeJNIAccess.register(trueTypeFontClass.getDeclaredMethod("readBlock", ByteBuffer.class, int.class, int.class));
-            RuntimeJNIAccess.register(trueTypeFontClass.getDeclaredMethod("readBytes", int.class, int.class));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(trueTypeFontClass, "readBlock","readBytes"));
         }
 
         Class<?> type1FontClass = featureUtils.loadClass("sun.font.Type1Font");
         if (type1FontClass != null) {
             RuntimeJNIAccess.register(type1FontClass);
-            RuntimeJNIAccess.register(type1FontClass.getDeclaredMethod("readFile", ByteBuffer.class));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(type1FontClass, "readFile"));
         }
 
         Class<?> disposerClass = featureUtils.loadClass("sun.java2d.Disposer");
         if (disposerClass != null) {
             RuntimeJNIAccess.register(disposerClass);
-            RuntimeJNIAccess.register(disposerClass.getMethod("addRecord", Object.class, long.class, long.class));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(disposerClass, "addRecord"));
         }
 
         Class<?> invalidPipeExceptionClass = featureUtils.loadClass("sun.java2d.InvalidPipeException");
@@ -338,181 +285,177 @@ class FontRequiredRegister {
         Class<?> sunGraphics2DClass = featureUtils.loadClass("sun.java2d.SunGraphics2D");
         if (sunGraphics2DClass != null) {
             RuntimeJNIAccess.register(sunGraphics2DClass);
-            RuntimeJNIAccess.register(sunGraphics2DClass.getDeclaredField("clipRegion"));
-            RuntimeJNIAccess.register(sunGraphics2DClass.getDeclaredField("composite"));
-            RuntimeJNIAccess.register(sunGraphics2DClass.getDeclaredField("eargb"));
-            RuntimeJNIAccess.register(sunGraphics2DClass.getDeclaredField("lcdTextContrast"));
-            RuntimeJNIAccess.register(sunGraphics2DClass.getDeclaredField("pixel"));
-            RuntimeJNIAccess.register(sunGraphics2DClass.getDeclaredField("strokeHint"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(sunGraphics2DClass, "clipRegion", "composite", "eargb", "lcdTextContrast", "pixel", "strokeHint"));
         }
 
         Class<?> sunGraphicsEnvironmentClass = featureUtils.loadClass("sun.java2d.SunGraphicsEnvironment");
         if (sunGraphicsEnvironmentClass != null) {
             RuntimeJNIAccess.register(sunGraphicsEnvironmentClass);
-            RuntimeJNIAccess.register(sunGraphicsEnvironmentClass.getMethod("isDisplayLocal"));
+            RuntimeJNIAccess.register(featureUtils.collectMethods(sunGraphicsEnvironmentClass, "isDisplayLocal"));
         }
 
         Class<?> surfaceDataClass = featureUtils.loadClass("sun.java2d.SurfaceData");
         if (surfaceDataClass != null) {
             RuntimeJNIAccess.register(surfaceDataClass);
-            RuntimeJNIAccess.register(surfaceDataClass.getDeclaredField("pData"));
-            RuntimeJNIAccess.register(surfaceDataClass.getDeclaredField("valid"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(surfaceDataClass, "pData", "valid"));
         }
 
-        Class<?> blitClass = featureUtils.classLoader().loadClass("sun.java2d.loops.Blit");
-        RuntimeJNIAccess.register(blitClass);
-        Class<?> surfaceTypeClass = featureUtils.classLoader().loadClass("sun.java2d.loops.SurfaceType");
-        Class<?> compositeTypeClass = featureUtils.classLoader().loadClass("sun.java2d.loops.CompositeType");
-        RuntimeJNIAccess.register(blitClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-        Class<?> blitBgClass = featureUtils.classLoader().loadClass("sun.java2d.loops.BlitBg");
-        RuntimeJNIAccess.register(blitBgClass);
-        RuntimeJNIAccess.register(blitBgClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> compositeTypeClass2 = featureUtils.classLoader().loadClass("sun.java2d.loops.CompositeType");
-        RuntimeJNIAccess.register(compositeTypeClass2);
-        RuntimeJNIAccess.register(compositeTypeClass2.getDeclaredField("AnyAlpha"));
-        RuntimeJNIAccess.register(compositeTypeClass2.getDeclaredField("Src"));
-        RuntimeJNIAccess.register(compositeTypeClass2.getDeclaredField("SrcNoEa"));
-        RuntimeJNIAccess.register(compositeTypeClass2.getDeclaredField("SrcOver"));
-        RuntimeJNIAccess.register(compositeTypeClass2.getDeclaredField("SrcOverNoEa"));
-        RuntimeJNIAccess.register(compositeTypeClass2.getDeclaredField("Xor"));
-
-        Class<?> drawGlyphListClass = featureUtils.classLoader().loadClass("sun.java2d.loops.DrawGlyphList");
-        RuntimeJNIAccess.register(drawGlyphListClass);
-        RuntimeJNIAccess.register(drawGlyphListClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> drawGlyphListAAClass = featureUtils.classLoader().loadClass("sun.java2d.loops.DrawGlyphListAA");
-        RuntimeJNIAccess.register(drawGlyphListAAClass);
-        RuntimeJNIAccess.register(drawGlyphListAAClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> drawGlyphListLCDClass = featureUtils.classLoader().loadClass("sun.java2d.loops.DrawGlyphListLCD");
-        RuntimeJNIAccess.register(drawGlyphListLCDClass);
-        RuntimeJNIAccess.register(drawGlyphListLCDClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> drawLineClass = featureUtils.classLoader().loadClass("sun.java2d.loops.DrawLine");
-        RuntimeJNIAccess.register(drawLineClass);
-        RuntimeJNIAccess.register(drawLineClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> drawParallelogramClass = featureUtils.classLoader().loadClass("sun.java2d.loops.DrawParallelogram");
-        RuntimeJNIAccess.register(drawParallelogramClass);
-        RuntimeJNIAccess.register(drawParallelogramClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> drawPathClass = featureUtils.classLoader().loadClass("sun.java2d.loops.DrawPath");
-        RuntimeJNIAccess.register(drawPathClass);
-        RuntimeJNIAccess.register(drawPathClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> drawPolygonsClass = featureUtils.classLoader().loadClass("sun.java2d.loops.DrawPolygons");
-        RuntimeJNIAccess.register(drawPolygonsClass);
-        RuntimeJNIAccess.register(drawPolygonsClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> drawRectClass = featureUtils.classLoader().loadClass("sun.java2d.loops.DrawRect");
-        RuntimeJNIAccess.register(drawRectClass);
-        RuntimeJNIAccess.register(drawRectClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> fillParallelogramClass = featureUtils.classLoader().loadClass("sun.java2d.loops.FillParallelogram");
-        RuntimeJNIAccess.register(fillParallelogramClass);
-        RuntimeJNIAccess.register(fillParallelogramClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> fillPathClass = featureUtils.classLoader().loadClass("sun.java2d.loops.FillPath");
-        RuntimeJNIAccess.register(fillPathClass);
-        RuntimeJNIAccess.register(fillPathClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> fillRectClass = featureUtils.classLoader().loadClass("sun.java2d.loops.FillRect");
-        RuntimeJNIAccess.register(fillRectClass);
-        RuntimeJNIAccess.register(fillRectClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> fillSpansClass = featureUtils.classLoader().loadClass("sun.java2d.loops.FillSpans");
-        RuntimeJNIAccess.register(fillSpansClass);
-        RuntimeJNIAccess.register(fillSpansClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
-
-        Class<?> graphicsPrimitiveClass = featureUtils.classLoader().loadClass("sun.java2d.loops.GraphicsPrimitive");
-        RuntimeJNIAccess.register(graphicsPrimitiveClass);
-        RuntimeJNIAccess.register(graphicsPrimitiveClass.getDeclaredField("pNativePrim"));
-
-        Class<?> graphicsPrimitiveMgrClass = featureUtils.classLoader().loadClass("sun.java2d.loops.GraphicsPrimitiveMgr");
-        RuntimeJNIAccess.register(graphicsPrimitiveMgrClass);
-        for (Method method : graphicsPrimitiveMgrClass.getMethods()) {
-            if (method.getName().equals("register")) {
-                RuntimeJNIAccess.register(method);
-                break;
-            }
+        Class<?> blitClass = featureUtils.loadClass("sun.java2d.loops.Blit");
+        if (blitClass != null) {
+            RuntimeJNIAccess.register(blitClass);
+            RuntimeJNIAccess.register(blitClass.getDeclaredConstructors());
         }
 
-        Class<?> maskBlitClass = featureUtils.classLoader().loadClass("sun.java2d.loops.MaskBlit");
-        RuntimeJNIAccess.register(maskBlitClass);
-        RuntimeJNIAccess.register(maskBlitClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
+        Class<?> blitBgClass = featureUtils.loadClass("sun.java2d.loops.BlitBg");
+        if (blitBgClass != null) {
+            RuntimeJNIAccess.register(blitBgClass);
+            RuntimeJNIAccess.register(blitBgClass.getDeclaredConstructors());
+        }
 
-        Class<?> maskFillClass = featureUtils.classLoader().loadClass("sun.java2d.loops.MaskFill");
-        RuntimeJNIAccess.register(maskFillClass);
-        RuntimeJNIAccess.register(maskFillClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
+        Class<?> compositeTypeClass2 = featureUtils.loadClass("sun.java2d.loops.CompositeType");
+        if (compositeTypeClass2 != null) {
+            RuntimeJNIAccess.register(compositeTypeClass2);
+            RuntimeJNIAccess.register(featureUtils.collectFields(compositeTypeClass2, "AnyAlpha", "Src", "SrcNoEa", "SrcOver", "SrcOverNoEa", "Xor"));
+        }
 
-        Class<?> scaledBlitClass = featureUtils.classLoader().loadClass("sun.java2d.loops.ScaledBlit");
-        RuntimeJNIAccess.register(scaledBlitClass);
-        RuntimeJNIAccess.register(scaledBlitClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
+        Class<?> drawGlyphListClass = featureUtils.loadClass("sun.java2d.loops.DrawGlyphList");
+        if (drawGlyphListClass != null) {
+            RuntimeJNIAccess.register(drawGlyphListClass);
+            RuntimeJNIAccess.register(drawGlyphListClass.getDeclaredConstructors());
+        }
 
-        Class<?> surfaceTypeClass2 = featureUtils.classLoader().loadClass("sun.java2d.loops.SurfaceType");
-        RuntimeJNIAccess.register(surfaceTypeClass2);
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("Any3Byte"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("Any4Byte"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("AnyByte"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("AnyColor"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("AnyInt"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("AnyShort"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("ByteBinary1Bit"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("ByteBinary2Bit"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("ByteBinary4Bit"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("ByteGray"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("ByteIndexed"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("ByteIndexedBm"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("FourByteAbgr"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("FourByteAbgrPre"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("Index12Gray"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("Index8Gray"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("IntArgb"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("IntArgbBm"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("IntArgbPre"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("IntBgr"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("IntRgb"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("IntRgbx"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("OpaqueColor"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("ThreeByteBgr"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("Ushort4444Argb"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("Ushort555Rgb"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("Ushort555Rgbx"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("Ushort565Rgb"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("UshortGray"));
-        RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredField("UshortIndexed"));
+        Class<?> drawGlyphListAAClass = featureUtils.loadClass("sun.java2d.loops.DrawGlyphListAA");
+        if (drawGlyphListAAClass != null) {
+            RuntimeJNIAccess.register(drawGlyphListAAClass);
+            RuntimeJNIAccess.register(drawGlyphListAAClass.getDeclaredConstructors());
+        }
 
-        Class<?> transformHelperClass = featureUtils.classLoader().loadClass("sun.java2d.loops.TransformHelper");
-        RuntimeJNIAccess.register(transformHelperClass);
-        RuntimeJNIAccess.register(transformHelperClass.getConstructor(long.class, surfaceTypeClass, compositeTypeClass, surfaceTypeClass));
+        Class<?> drawGlyphListLCDClass = featureUtils.loadClass("sun.java2d.loops.DrawGlyphListLCD");
+        if (drawGlyphListLCDClass != null) {
+            RuntimeJNIAccess.register(drawGlyphListLCDClass);
+            RuntimeJNIAccess.register(drawGlyphListLCDClass.getDeclaredConstructors());
+        }
 
-        Class<?> xorCompositeClass = featureUtils.classLoader().loadClass("sun.java2d.loops.XORComposite");
-        RuntimeJNIAccess.register(xorCompositeClass);
-        RuntimeJNIAccess.register(xorCompositeClass.getDeclaredField("alphaMask"));
-        RuntimeJNIAccess.register(xorCompositeClass.getDeclaredField("xorColor"));
-        RuntimeJNIAccess.register(xorCompositeClass.getDeclaredField("xorPixel"));
+        Class<?> drawLineClass = featureUtils.loadClass("sun.java2d.loops.DrawLine");
+        if (drawLineClass != null) {
+            RuntimeJNIAccess.register(drawLineClass);
+            RuntimeJNIAccess.register(drawLineClass.getDeclaredConstructors());
+        }
 
-        Class<?> regionClass = featureUtils.classLoader().loadClass("sun.java2d.pipe.Region");
-        RuntimeJNIAccess.register(regionClass);
-        RuntimeJNIAccess.register(regionClass.getDeclaredField("bands"));
-        RuntimeJNIAccess.register(regionClass.getDeclaredField("endIndex"));
-        RuntimeJNIAccess.register(regionClass.getDeclaredField("hix"));
-        RuntimeJNIAccess.register(regionClass.getDeclaredField("hiy"));
-        RuntimeJNIAccess.register(regionClass.getDeclaredField("lox"));
-        RuntimeJNIAccess.register(regionClass.getDeclaredField("loy"));
+        Class<?> drawParallelogramClass = featureUtils.loadClass("sun.java2d.loops.DrawParallelogram");
+        if (drawParallelogramClass != null) {
+            RuntimeJNIAccess.register(drawParallelogramClass);
+            RuntimeJNIAccess.register(drawParallelogramClass.getDeclaredConstructors());
+        }
 
-        Class<?> regionIteratorClass = featureUtils.classLoader().loadClass("sun.java2d.pipe.RegionIterator");
-        RuntimeJNIAccess.register(regionIteratorClass);
-        RuntimeJNIAccess.register(regionIteratorClass.getDeclaredField("curIndex"));
-        RuntimeJNIAccess.register(regionIteratorClass.getDeclaredField("numXbands"));
-        RuntimeJNIAccess.register(regionIteratorClass.getDeclaredField("region"));
+        Class<?> drawPathClass = featureUtils.loadClass("sun.java2d.loops.DrawPath");
+        if (drawPathClass != null) {
+            RuntimeJNIAccess.register(drawPathClass);
+            RuntimeJNIAccess.register(drawPathClass.getDeclaredConstructors());
+        }
+
+        Class<?> drawPolygonsClass = featureUtils.loadClass("sun.java2d.loops.DrawPolygons");
+        if (drawPolygonsClass != null) {
+            RuntimeJNIAccess.register(drawPolygonsClass);
+            RuntimeJNIAccess.register(drawPolygonsClass.getDeclaredConstructors());
+        }
+
+        Class<?> drawRectClass = featureUtils.loadClass("sun.java2d.loops.DrawRect");
+        if (drawRectClass != null) {
+            RuntimeJNIAccess.register(drawRectClass);
+            RuntimeJNIAccess.register(drawRectClass.getDeclaredConstructors());
+        }
+
+        Class<?> fillParallelogramClass = featureUtils.loadClass("sun.java2d.loops.FillParallelogram");
+        if (fillParallelogramClass != null) {
+            RuntimeJNIAccess.register(fillParallelogramClass);
+            RuntimeJNIAccess.register(fillParallelogramClass.getDeclaredConstructors());
+        }
+
+        Class<?> fillPathClass = featureUtils.loadClass("sun.java2d.loops.FillPath");
+        if (fillPathClass != null) {
+            RuntimeJNIAccess.register(fillPathClass);
+            RuntimeJNIAccess.register(fillPathClass.getDeclaredConstructors());
+        }
+
+        Class<?> fillRectClass = featureUtils.loadClass("sun.java2d.loops.FillRect");
+        if (fillRectClass != null) {
+            RuntimeJNIAccess.register(fillRectClass);
+            RuntimeJNIAccess.register(fillRectClass.getDeclaredConstructors());
+        }
+
+        Class<?> fillSpansClass = featureUtils.loadClass("sun.java2d.loops.FillSpans");
+        if (fillSpansClass != null) {
+            RuntimeJNIAccess.register(fillSpansClass);
+            RuntimeJNIAccess.register(fillSpansClass.getDeclaredConstructors());
+        }
+
+        Class<?> graphicsPrimitiveClass = featureUtils.loadClass("sun.java2d.loops.GraphicsPrimitive");
+        if (graphicsPrimitiveClass != null) {
+            RuntimeJNIAccess.register(graphicsPrimitiveClass);
+            RuntimeJNIAccess.register(graphicsPrimitiveClass.getDeclaredField("pNativePrim"));
+        }
+
+        Class<?> graphicsPrimitiveMgrClass = featureUtils.loadClass("sun.java2d.loops.GraphicsPrimitiveMgr");
+        if (graphicsPrimitiveMgrClass != null) {
+            RuntimeJNIAccess.register(graphicsPrimitiveMgrClass);
+            RuntimeJNIAccess.register(featureUtils.collectMethods(graphicsPrimitiveMgrClass, "register"));
+        }
+        Class<?> graphicsPrimitive = featureUtils.loadClass("sun.java2d.loops.GraphicsPrimitive[]");
+        if (graphicsPrimitive != null) RuntimeJNIAccess.register(graphicsPrimitive);
+
+        Class<?> maskBlitClass = featureUtils.loadClass("sun.java2d.loops.MaskBlit");
+        if (maskBlitClass != null) {
+            RuntimeJNIAccess.register(maskBlitClass);
+            RuntimeJNIAccess.register(maskBlitClass.getDeclaredConstructors());
+        }
+
+        Class<?> maskFillClass = featureUtils.loadClass("sun.java2d.loops.MaskFill");
+        if (maskFillClass != null) {
+            RuntimeJNIAccess.register(maskFillClass);
+            RuntimeJNIAccess.register(maskFillClass.getDeclaredConstructors());
+        }
+
+        Class<?> scaledBlitClass = featureUtils.loadClass("sun.java2d.loops.ScaledBlit");
+        if (scaledBlitClass != null) {
+            RuntimeJNIAccess.register(scaledBlitClass);
+            RuntimeJNIAccess.register(scaledBlitClass.getDeclaredConstructors());
+        }
+
+        Class<?> surfaceTypeClass2 = featureUtils.loadClass("sun.java2d.loops.SurfaceType");
+        if (surfaceTypeClass2 != null) {
+            RuntimeJNIAccess.register(surfaceTypeClass2);
+            RuntimeJNIAccess.register(surfaceTypeClass2.getDeclaredFields());
+        }
+
+        Class<?> transformHelperClass = featureUtils.loadClass("sun.java2d.loops.TransformHelper");
+        if (transformHelperClass != null) {
+            RuntimeJNIAccess.register(transformHelperClass);
+            RuntimeJNIAccess.register(transformHelperClass.getDeclaredConstructors());
+        }
+
+        Class<?> xorCompositeClass = featureUtils.loadClass("sun.java2d.loops.XORComposite");
+        if (xorCompositeClass != null) {
+            RuntimeJNIAccess.register(xorCompositeClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(xorCompositeClass, "alphaMask", "xorColor", "xorPixel"));
+        }
+
+        Class<?> regionClass = featureUtils.loadClass("sun.java2d.pipe.Region");
+        if (regionClass != null) {
+            RuntimeJNIAccess.register(regionClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(regionClass, "bands", "endIndex", "hix", "hiy", "lox", "loy"));
+        }
+
+        Class<?> regionIteratorClass = featureUtils.loadClass("sun.java2d.pipe.RegionIterator");
+        if (regionIteratorClass != null) {
+            RuntimeJNIAccess.register(regionIteratorClass);
+            RuntimeJNIAccess.register(featureUtils.collectFields(regionIteratorClass, "curIndex", "numXbands", "region"));
+        }
 
         Class<?> xrSurfaceDataClass = featureUtils.loadClass("sun.java2d.xr.XRSurfaceData");
         if (xrSurfaceDataClass != null) {
             RuntimeJNIAccess.register(xrSurfaceDataClass);
-            RuntimeJNIAccess.register(xrSurfaceDataClass.getDeclaredField("picture"));
-            RuntimeJNIAccess.register(xrSurfaceDataClass.getDeclaredField("xid"));
+            RuntimeJNIAccess.register(featureUtils.collectFields(xrSurfaceDataClass, "picture", "xid"));
         }
 
         featureUtils.registerResource(Font.class, "META-INF/services/javax.imageio.spi.ImageInputStreamSpi",
