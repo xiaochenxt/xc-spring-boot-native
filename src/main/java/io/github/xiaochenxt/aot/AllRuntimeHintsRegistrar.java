@@ -20,9 +20,7 @@ public class AllRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
             AotUtils aotUtils = new AotUtils(hints, classLoader);
             Set<Class<?>> classes = aotUtils.collectClass(aotUtils.findSpringBootApplicationClasses().stream().map(Class::getPackageName).toArray(String[]::new));
             aotUtils.registerReflection(classes);
-            aotUtils.registerPattern("*.properties"
-            //        , "*.types", "*.ttf", "*.ini"
-            );
+            aotUtils.registerPattern("*.properties");
             aotUtils.registerSerializable(classes);
         } catch (IOException ignored) {}
     }

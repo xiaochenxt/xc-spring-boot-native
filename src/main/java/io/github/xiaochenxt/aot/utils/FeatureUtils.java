@@ -9,9 +9,7 @@ import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 
 /**
@@ -65,29 +63,38 @@ public class FeatureUtils extends CollectUtils {
 
     public void registerReflection(Method... methods) {
         RuntimeReflection.register(methods);
-        List<String> s = new ArrayList<>();
-        for (Method method : methods) {
-            s.add(method.toString());
+        if (!debug) return;
+        StringBuilder s = new StringBuilder();
+        for (int i = 0, methodsLength = methods.length; i < methodsLength; i++) {
+            Method method = methods[i];
+            s.append(method.toString());
+            if (i != methodsLength - 1) s.append(",");
         }
-        if (debug) System.out.println("registering reflect method " + String.join(", ", s));
+        System.out.println("registering reflect method " + s);
     }
 
     public void registerReflection(Constructor<?>... constructors) {
         RuntimeReflection.register(constructors);
-        List<String> s = new ArrayList<>();
-        for (Constructor<?> constructor : constructors) {
-            s.add(constructor.toString());
+        if (!debug) return;
+        StringBuilder s = new StringBuilder();
+        for (int i = 0, constructorsLength = constructors.length; i < constructorsLength; i++) {
+            Constructor<?> constructor = constructors[i];
+            s.append(constructor.toString());
+            if (i != constructorsLength - 1) s.append(",");
         }
-        if (debug) System.out.println("registering reflect constructor " + String.join(", ", s));
+        System.out.println("registering reflect constructor " + s);
     }
 
     public void registerReflection(Field... fields) {
         RuntimeReflection.register(fields);
-        List<String> s = new ArrayList<>();
-        for (Field field : fields) {
-            s.add(field.toString());
+        if (!debug) return;
+        StringBuilder s = new StringBuilder();
+        for (int i = 0, fieldsLength = fields.length; i < fieldsLength; i++) {
+            Field field = fields[i];
+            s.append(field.toString());
+            if (i != fieldsLength - 1) s.append(",");
         }
-        if (debug) System.out.println("registering reflect field " + String.join(", ", s));
+        System.out.println("registering reflect field " + s);
     }
 
     public void registerReflectionIfPresent(String... classes) {
@@ -124,29 +131,38 @@ public class FeatureUtils extends CollectUtils {
 
     public void registerJni(Method... methods) {
         RuntimeJNIAccess.register(methods);
-        List<String> s = new ArrayList<>();
-        for (Method method : methods) {
-            s.add(method.toString());
+        if (!debug) return;
+        StringBuilder s = new StringBuilder();
+        for (int i = 0, methodsLength = methods.length; i < methodsLength; i++) {
+            Method method = methods[i];
+            s.append(method.toString());
+            if (i != methodsLength - 1) s.append(",");
         }
-        if (debug) System.out.println("registering jni method " + String.join(", ", s));
+        System.out.println("registering jni method " + s);
     }
 
     public void registerJni(Constructor<?>... constructors) {
         RuntimeJNIAccess.register(constructors);
-        List<String> s = new ArrayList<>();
-        for (Constructor<?> constructor : constructors) {
-            s.add(constructor.toString());
+        if (!debug) return;
+        StringBuilder s = new StringBuilder();
+        for (int i = 0, constructorsLength = constructors.length; i < constructorsLength; i++) {
+            Constructor<?> constructor = constructors[i];
+            s.append(constructor.toString());
+            if (i != constructorsLength - 1) s.append(",");
         }
-        if (debug) System.out.println("registering jni constructor " + String.join(", ", s));
+        System.out.println("registering jni constructor " + s);
     }
 
     public void registerJni(Field... fields) {
         RuntimeJNIAccess.register(fields);
-        List<String> s = new ArrayList<>();
-        for (Field field : fields) {
-            s.add(field.toString());
+        if (!debug) return;
+        StringBuilder s = new StringBuilder();
+        for (int i = 0, fieldsLength = fields.length; i < fieldsLength; i++) {
+            Field field = fields[i];
+            s.append(field.toString());
+            if (i != fieldsLength - 1) s.append(",");
         }
-        if (debug) System.out.println("registering jni field " + String.join(", ", s));
+        System.out.println("registering jni field " + s);
     }
 
     public void registerJniIfPresent(String... classes) {
