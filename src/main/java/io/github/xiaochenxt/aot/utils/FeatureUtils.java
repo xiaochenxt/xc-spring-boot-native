@@ -6,7 +6,8 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import java.io.Serializable;
-import java.lang.reflect.Executable;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,11 +56,6 @@ public class FeatureUtils extends CollectUtils {
     public void registerReflection(Class<?>... classes) {
         for (Class<?> c : classes) {
             RuntimeReflection.register(c);
-            RuntimeReflection.register(c.getClasses());
-            RuntimeReflection.register(c.getConstructors());
-            RuntimeReflection.register(c.getMethods());
-            RuntimeReflection.register(c.getFields());
-            RuntimeReflection.register(c.getDeclaredClasses());
             RuntimeReflection.register(c.getDeclaredConstructors());
             RuntimeReflection.register(c.getDeclaredMethods());
             RuntimeReflection.register(c.getDeclaredFields());
@@ -67,20 +63,38 @@ public class FeatureUtils extends CollectUtils {
         }
     }
 
-    public void registerReflection(Executable... executables) {
+    public void registerReflection(Method... methods) {
         List<String> s = new ArrayList<>();
-        for (Executable executable : executables) {
-            RuntimeReflection.register(executable);
-            s.add(executable.toString());
+        for (Method method : methods) {
+            RuntimeReflection.register(method);
+            s.add(method.getName());
         }
-        System.out.println("registering reflect " + String.join(", ", s));
+        System.out.println("registering reflect method " + String.join(", ", s));
+    }
+
+    public void registerReflection(Constructor<?>... constructors) {
+        List<String> s = new ArrayList<>();
+        for (Constructor<?> constructor : constructors) {
+            RuntimeReflection.register(constructor);
+            s.add(constructor.toString());
+        }
+        System.out.println("registering reflect constructor " + String.join(", ", s));
+    }
+
+    public void registerReflection(Field... fields) {
+        List<String> s = new ArrayList<>();
+        for (Field field : fields) {
+            RuntimeReflection.register(field);
+            s.add(field.getName());
+        }
+        System.out.println("registering reflect field " + String.join(", ", s));
     }
 
     public void registerReflectionBasic(Class<?>... classes) {
         for (Class<?> c : classes) {
             RuntimeReflection.register(c);
-            RuntimeReflection.register(c.getConstructors());
-            RuntimeReflection.register(c.getMethods());
+            RuntimeReflection.register(c.getDeclaredConstructors());
+            RuntimeReflection.register(c.getDeclaredMethods());
             RuntimeReflection.register(c.getDeclaredFields());
             System.out.println("registering reflect " + c.getName());
         }
@@ -91,11 +105,6 @@ public class FeatureUtils extends CollectUtils {
             Class<?> c = loadClass(cs);
             if (c == null) continue;
             RuntimeReflection.register(c);
-            RuntimeReflection.register(c.getClasses());
-            RuntimeReflection.register(c.getConstructors());
-            RuntimeReflection.register(c.getMethods());
-            RuntimeReflection.register(c.getFields());
-            RuntimeReflection.register(c.getDeclaredClasses());
             RuntimeReflection.register(c.getDeclaredConstructors());
             RuntimeReflection.register(c.getDeclaredMethods());
             RuntimeReflection.register(c.getDeclaredFields());
@@ -108,8 +117,8 @@ public class FeatureUtils extends CollectUtils {
             Class<?> c = loadClass(cs);
             if (c == null) continue;
             RuntimeReflection.register(c);
-            RuntimeReflection.register(c.getConstructors());
-            RuntimeReflection.register(c.getMethods());
+            RuntimeReflection.register(c.getDeclaredConstructors());
+            RuntimeReflection.register(c.getDeclaredMethods());
             RuntimeReflection.register(c.getDeclaredFields());
             System.out.println("registering reflect " + c.getName());
         }
@@ -121,7 +130,7 @@ public class FeatureUtils extends CollectUtils {
             if (c == null) continue;
             RuntimeReflection.register(c);
             RuntimeReflection.register(c.getDeclaredConstructors());
-            System.out.println("registering reflect " + c.getName());
+            System.out.println("registering reflect declaredConstructors " + c.getName());
         }
     }
 
@@ -129,13 +138,37 @@ public class FeatureUtils extends CollectUtils {
         for (Class<?> c : classes) {
             RuntimeJNIAccess.register(c);
             RuntimeJNIAccess.register(c.getDeclaredConstructors());
-            RuntimeJNIAccess.register(c.getConstructors());
             RuntimeJNIAccess.register(c.getDeclaredMethods());
-            RuntimeJNIAccess.register(c.getMethods());
-            RuntimeJNIAccess.register(c.getFields());
             RuntimeJNIAccess.register(c.getDeclaredFields());
             System.out.println("registering jni " + c.getName());
         }
+    }
+
+    public void registerJni(Method... methods) {
+        List<String> s = new ArrayList<>();
+        for (Method method : methods) {
+            RuntimeJNIAccess.register(method);
+            s.add(method.getName());
+        }
+        System.out.println("registering jni method " + String.join(", ", s));
+    }
+
+    public void registerJni(Constructor<?>... constructors) {
+        List<String> s = new ArrayList<>();
+        for (Constructor<?> constructor : constructors) {
+            RuntimeJNIAccess.register(constructor);
+            s.add(constructor.toString());
+        }
+        System.out.println("registering jni constructor " + String.join(", ", s));
+    }
+
+    public void registerJni(Field... fields) {
+        List<String> s = new ArrayList<>();
+        for (Field field : fields) {
+            RuntimeJNIAccess.register(field);
+            s.add(field.getName());
+        }
+        System.out.println("registering jni field " + String.join(", ", s));
     }
 
     public void registerJniIfPresent(String... classes) {
@@ -144,10 +177,7 @@ public class FeatureUtils extends CollectUtils {
             if (c == null) continue;
             RuntimeJNIAccess.register(c);
             RuntimeJNIAccess.register(c.getDeclaredConstructors());
-            RuntimeJNIAccess.register(c.getConstructors());
             RuntimeJNIAccess.register(c.getDeclaredMethods());
-            RuntimeJNIAccess.register(c.getMethods());
-            RuntimeJNIAccess.register(c.getFields());
             RuntimeJNIAccess.register(c.getDeclaredFields());
             System.out.println("registering jni " + c.getName());
         }
