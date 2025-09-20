@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
  */
 public class CollectUtils {
 
+    public static final boolean debug = Boolean.getBoolean("aot.debug");
+
     private final ClassLoader classLoader;
 
     public CollectUtils(ClassLoader classLoader) {

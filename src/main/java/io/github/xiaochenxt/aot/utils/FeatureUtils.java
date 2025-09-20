@@ -59,45 +59,35 @@ public class FeatureUtils extends CollectUtils {
             RuntimeReflection.register(c.getDeclaredConstructors());
             RuntimeReflection.register(c.getDeclaredMethods());
             RuntimeReflection.register(c.getDeclaredFields());
-            System.out.println("registering reflect " + c.getName());
+            if (debug) System.out.println("registering reflect " + c.getName());
         }
     }
 
     public void registerReflection(Method... methods) {
+        RuntimeReflection.register(methods);
         List<String> s = new ArrayList<>();
         for (Method method : methods) {
-            RuntimeReflection.register(method);
-            s.add(method.getName());
+            s.add(method.toString());
         }
-        System.out.println("registering reflect method " + String.join(", ", s));
+        if (debug) System.out.println("registering reflect method " + String.join(", ", s));
     }
 
     public void registerReflection(Constructor<?>... constructors) {
+        RuntimeReflection.register(constructors);
         List<String> s = new ArrayList<>();
         for (Constructor<?> constructor : constructors) {
-            RuntimeReflection.register(constructor);
             s.add(constructor.toString());
         }
-        System.out.println("registering reflect constructor " + String.join(", ", s));
+        if (debug) System.out.println("registering reflect constructor " + String.join(", ", s));
     }
 
     public void registerReflection(Field... fields) {
+        RuntimeReflection.register(fields);
         List<String> s = new ArrayList<>();
         for (Field field : fields) {
-            RuntimeReflection.register(field);
-            s.add(field.getName());
+            s.add(field.toString());
         }
-        System.out.println("registering reflect field " + String.join(", ", s));
-    }
-
-    public void registerReflectionBasic(Class<?>... classes) {
-        for (Class<?> c : classes) {
-            RuntimeReflection.register(c);
-            RuntimeReflection.register(c.getDeclaredConstructors());
-            RuntimeReflection.register(c.getDeclaredMethods());
-            RuntimeReflection.register(c.getDeclaredFields());
-            System.out.println("registering reflect " + c.getName());
-        }
+        if (debug) System.out.println("registering reflect field " + String.join(", ", s));
     }
 
     public void registerReflectionIfPresent(String... classes) {
@@ -108,29 +98,17 @@ public class FeatureUtils extends CollectUtils {
             RuntimeReflection.register(c.getDeclaredConstructors());
             RuntimeReflection.register(c.getDeclaredMethods());
             RuntimeReflection.register(c.getDeclaredFields());
-            System.out.println("registering reflect " + c.getName());
+            if (debug) System.out.println("registering reflect " + c.getName());
         }
     }
 
-    public void registerReflectionBasicIfPresent(String... classes) {
+    public void registerReflectionConstructorsIfPresent(String... classes) {
         for (String cs : classes) {
             Class<?> c = loadClass(cs);
             if (c == null) continue;
             RuntimeReflection.register(c);
             RuntimeReflection.register(c.getDeclaredConstructors());
-            RuntimeReflection.register(c.getDeclaredMethods());
-            RuntimeReflection.register(c.getDeclaredFields());
-            System.out.println("registering reflect " + c.getName());
-        }
-    }
-
-    public void registerReflectionDeclaredConstructorsIfPresent(String... classes) {
-        for (String cs : classes) {
-            Class<?> c = loadClass(cs);
-            if (c == null) continue;
-            RuntimeReflection.register(c);
-            RuntimeReflection.register(c.getDeclaredConstructors());
-            System.out.println("registering reflect declaredConstructors " + c.getName());
+            if (debug) System.out.println("registering reflect constructors " + c.getName());
         }
     }
 
@@ -140,35 +118,35 @@ public class FeatureUtils extends CollectUtils {
             RuntimeJNIAccess.register(c.getDeclaredConstructors());
             RuntimeJNIAccess.register(c.getDeclaredMethods());
             RuntimeJNIAccess.register(c.getDeclaredFields());
-            System.out.println("registering jni " + c.getName());
+            if (debug) System.out.println("registering jni " + c.getName());
         }
     }
 
     public void registerJni(Method... methods) {
+        RuntimeJNIAccess.register(methods);
         List<String> s = new ArrayList<>();
         for (Method method : methods) {
-            RuntimeJNIAccess.register(method);
-            s.add(method.getName());
+            s.add(method.toString());
         }
-        System.out.println("registering jni method " + String.join(", ", s));
+        if (debug) System.out.println("registering jni method " + String.join(", ", s));
     }
 
     public void registerJni(Constructor<?>... constructors) {
+        RuntimeJNIAccess.register(constructors);
         List<String> s = new ArrayList<>();
         for (Constructor<?> constructor : constructors) {
-            RuntimeJNIAccess.register(constructor);
             s.add(constructor.toString());
         }
-        System.out.println("registering jni constructor " + String.join(", ", s));
+        if (debug) System.out.println("registering jni constructor " + String.join(", ", s));
     }
 
     public void registerJni(Field... fields) {
+        RuntimeJNIAccess.register(fields);
         List<String> s = new ArrayList<>();
         for (Field field : fields) {
-            RuntimeJNIAccess.register(field);
-            s.add(field.getName());
+            s.add(field.toString());
         }
-        System.out.println("registering jni field " + String.join(", ", s));
+        if (debug) System.out.println("registering jni field " + String.join(", ", s));
     }
 
     public void registerJniIfPresent(String... classes) {
@@ -179,13 +157,13 @@ public class FeatureUtils extends CollectUtils {
             RuntimeJNIAccess.register(c.getDeclaredConstructors());
             RuntimeJNIAccess.register(c.getDeclaredMethods());
             RuntimeJNIAccess.register(c.getDeclaredFields());
-            System.out.println("registering jni " + c.getName());
+            if (debug) System.out.println("registering jni " + c.getName());
         }
     }
 
     public void registerSystemProperty(String key, String value) {
         RuntimeSystemProperties.register(key, value);
-        System.out.println("set system properties " + key + "=" + value);
+        if (debug) System.out.println("set system properties " + key + "=" + value);
     }
 
     public void setOption(String optionName, String value) {
@@ -197,14 +175,14 @@ public class FeatureUtils extends CollectUtils {
         for (String resource : resources) {
             Module module = c.getModule();
             RuntimeResourceAccess.addResource(module, resource);
-            System.out.println("registering module " + module.getName()+" resource "+resource);
+            if (debug)  System.out.println("registering module " + module.getName()+" resource "+resource);
         }
     }
 
     public void registerResourceBundle(Class<?> c, String beanName, Locale... locales) {
         Module module = c.getModule();
         RuntimeResourceAccess.addResourceBundle(module, beanName, locales);
-        System.out.println("registering resourceBundle module " + module.getName() + " beanName " + beanName + " locales " + Arrays.toString(locales));
+        if (debug) System.out.println("registering resourceBundle module " + module.getName() + " beanName " + beanName + " locales " + Arrays.toString(locales));
     }
 
     /**
@@ -215,7 +193,7 @@ public class FeatureUtils extends CollectUtils {
     public void ignoreResources(String... resources) {
         for (String resource : resources) {
             RuntimeResourceSupport.singleton().ignoreResources(ConfigurationCondition.alwaysTrue(), resource);
-            System.out.println("ignore resource " + resource);
+            if (debug) System.out.println("ignore resource " + resource);
         }
     }
 
@@ -234,7 +212,7 @@ public class FeatureUtils extends CollectUtils {
         for (Class<?> c : classes) {
             if (!Serializable.class.isAssignableFrom(c)) continue;
             RuntimeSerialization.register(c);
-            System.out.println("registering serializable " + c.getName());
+            if (debug) System.out.println("registering serializable " + c.getName());
         }
     }
 
@@ -244,7 +222,7 @@ public class FeatureUtils extends CollectUtils {
             if (c == null) continue;
             if (!Serializable.class.isAssignableFrom(c)) continue;
             RuntimeSerialization.register(c);
-            System.out.println("registering serializable " + c.getName());
+            if (debug) System.out.println("registering serializable " + c.getName());
         }
     }
 
@@ -253,7 +231,7 @@ public class FeatureUtils extends CollectUtils {
             for (Method declaredMethod : c.getDeclaredMethods()) {
                 if (declaredMethod.getName().contains("$deserializeLambda$")) {
                     RuntimeSerialization.registerLambdaCapturingClass(c);
-                    System.out.println("registering serializationLambdaCapturing " + c.getName());
+                    if (debug) System.out.println("registering serializationLambdaCapturing " + c.getName());
                     break;
                 }
             }
@@ -263,14 +241,14 @@ public class FeatureUtils extends CollectUtils {
     public void registerSerializationIncludingAssociatedClasses(Class<?>... classes) {
         for (Class<?> c : classes) {
             RuntimeSerialization.registerIncludingAssociatedClasses(c);
-            System.out.println("registering serializationIncludingAssociated " + c.getName());
+            if (debug) System.out.println("registering serializationIncludingAssociated " + c.getName());
         }
     }
 
     public void registerSerializationProxyClass(Class<?>... classes) {
         for (Class<?> c : classes) {
             RuntimeSerialization.registerProxyClass(c);
-            System.out.println("registering serializationProxy " + c.getName());
+            if (debug) System.out.println("registering serializationProxy " + c.getName());
         }
     }
 
@@ -280,7 +258,7 @@ public class FeatureUtils extends CollectUtils {
             if (c == null) continue;
             if (!Serializable.class.isAssignableFrom(c)) continue;
             RuntimeProxyCreation.register(c);
-            System.out.println("registering proxy " + c.getName());
+            if (debug) System.out.println("registering proxy " + c.getName());
         }
     }
 

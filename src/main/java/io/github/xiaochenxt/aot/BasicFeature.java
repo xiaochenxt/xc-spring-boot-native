@@ -117,7 +117,7 @@ class BasicFeature implements Feature {
         Class<?> nodeFactory = featureUtils.loadClass("com.github.benmanes.caffeine.cache.NodeFactory");
         if (nodeFactory != null) {
             access.registerReachabilityHandler(duringAnalysisAccess -> {
-                featureUtils.registerReflectionDeclaredConstructorsIfPresent(
+                featureUtils.registerReflectionConstructorsIfPresent(
                         "com.github.benmanes.caffeine.cache.PD","com.github.benmanes.caffeine.cache.PDA","com.github.benmanes.caffeine.cache.PDAMS",
                         "com.github.benmanes.caffeine.cache.PDW", "com.github.benmanes.caffeine.cache.PDWMS","com.github.benmanes.caffeine.cache.PS",
                         "com.github.benmanes.caffeine.cache.PSA","com.github.benmanes.caffeine.cache.PSAMS","com.github.benmanes.caffeine.cache.PSW",
@@ -127,7 +127,7 @@ class BasicFeature implements Feature {
         Class<?> localCacheFactory = featureUtils.loadClass("com.github.benmanes.caffeine.cache.LocalCacheFactory");
         if (localCacheFactory != null) {
             access.registerReachabilityHandler(duringAnalysisAccess -> {
-                featureUtils.registerReflectionDeclaredConstructorsIfPresent(
+                featureUtils.registerReflectionConstructorsIfPresent(
                         "com.github.benmanes.caffeine.cache.SIMSA","com.github.benmanes.caffeine.cache.SIMSW",
                         "com.github.benmanes.caffeine.cache.SSMSA","com.github.benmanes.caffeine.cache.SSMSW");
             }, localCacheFactory);
@@ -148,9 +148,9 @@ class BasicFeature implements Feature {
                         featureUtils.registerResource(apacheHttpClient,"endpoints.json");
                         Class<?> assumeRoleResponse = featureUtils.loadClass("com.aliyuncs.auth.sts.AssumeRoleResponse");
                         if (assumeRoleResponse != null) {
-                            featureUtils.registerReflectionBasic(assumeRoleResponse);
+                            featureUtils.registerReflection(assumeRoleResponse);
                             RuntimeReflection.registerForReflectiveInstantiation(featureUtils.classLoader().loadClass("com.aliyuncs.auth.sts.AssumeRoleResponse"));
-                            featureUtils.registerReflectionBasic(assumeRoleResponse.getClasses());
+                            featureUtils.registerReflection(assumeRoleResponse.getClasses());
                         }
                     } catch (Exception ignored) {}
                 }, apacheHttpClient);
