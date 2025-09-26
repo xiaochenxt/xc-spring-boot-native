@@ -4,7 +4,7 @@
 <dependency>
     <groupId>io.github.xiaochenxt</groupId>
     <artifactId>xc-spring-boot-native</artifactId>
-    <version>0.0.5</version>
+    <version>${lastVersion}</version>
 </dependency>
 ```
 springboot项目需先执行spring-boot:process-aot
