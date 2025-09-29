@@ -97,6 +97,14 @@ public class FeatureUtils extends CollectUtils {
         System.out.println("registering reflect field " + s);
     }
 
+    public void registerReflectionConstructors(Class<?>... classes) {
+        for (Class<?> c : classes) {
+            RuntimeReflection.register(c);
+            RuntimeReflection.register(c.getDeclaredConstructors());
+            if (debug) System.out.println("registering reflect constructors " + c.getName());
+        }
+    }
+
     public void registerReflectionIfPresent(String... classes) {
         for (String cs : classes) {
             Class<?> c = loadClass(cs);
