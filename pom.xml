@@ -5,12 +5,12 @@
     <parent>
         <groupId>io.github.xiaochenxt</groupId>
         <artifactId>xc-spring-boot-starter-parent</artifactId>
-        <version>0.0.12</version>
+        <version>0.0.13</version>
     </parent>
 
     <artifactId>xc-spring-boot-native</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.9</version>
+    <version>0.0.10</version>
 
     <name>${project.artifactId}</name>
     <url>https://github.com/xiaochenxt/xc-spring-boot-native</url>
